@@ -42,7 +42,7 @@ def daily_revenue(days=30, db_path='data/clearpath.db'):
         date,
         sum(revenue) as total_revenue
     FROM daily_sales
-    WHERE date >= date('now', '-{days} days')    
+    WHERE date >= date((SELECT MAX(date) FROM sales), '-{days} days')  
     GROUP BY date
     ORDER BY date ASC
 """

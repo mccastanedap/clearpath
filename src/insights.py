@@ -1,6 +1,9 @@
 import anthropic
 import pandas as pd
 
+from dotenv import load_dotenv
+load_dotenv()
+
 def generate_insights(top_products_df, daily_revenue_df, velocity_df, business_name, business_type):
     """
     Sends query results to Claude API and returns
