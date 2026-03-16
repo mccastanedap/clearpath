@@ -1,0 +1,19 @@
+date,product_name,category,size,quantity,price
+2024-01-15,Mango Juice,Juice,Large,2,5.50
+2024-01-15,Green Detox,Detox,Small,1,4.00
+2024-01-15,mango juice,Juice,Small,1,4.00
+2024-01-16,Strawberry Smoothie,Smoothie,Large,3,6.00
+2024-01-16,MANGO JUICE,Juice,Large,1,5.50
+2024-01-16,Green Detox,Detox,Large,1,5.00
+2024-01-17,Mango Juce,Juice,Small,2,4.00
+2024-01-17,Pineapple Juice,Juice,Large,4,5.50
+2024-01-17,Green Detox,Detox,Small,1,4.00
+2024-01-18,,Juice,Large,-1,5.50
+2024-01-18,Strawberry Smoothie,Smoothie,Small,2,4.50
+2024-01-18,Pineapple Juice,Juice,Large,1,5.50
+2024-01-19,Green Detox,Detox,Large,0,5.00
+2024-01-19,Mango Juice,Juice,Large,3,5.50
+2024-01-19,Strawberry Smoothie,Smoothie,Large,2,6.00
+2024-01-20,Pineapple Juice,Juice,Small,2,4.50
+2024-01-20,Green Detox,Detox,Small,1,4.00
+2024-01-20,Mango Juice,Juice,Large,4,5.50
