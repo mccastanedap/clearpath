@@ -1,0 +1,15 @@
+name: clearpath_dbt
+version: "1.0.0"
+config-version: 2
+
+profile: clearpath_dbt
+
+model-paths:
+  - models
+
+models:
+  clearpath_dbt:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table

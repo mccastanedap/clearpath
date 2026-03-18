@@ -3,7 +3,7 @@
         SELECT
             date,
             quantity * price as revenue
-        FROM stg_sales
+        FROM {{ ref('stg_sales') }}
     )
     SELECT
         date,
