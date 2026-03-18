@@ -27,3 +27,7 @@ into plain-English business recommendations for small retail clients.
 - `src/queries.py` — advanced SQL queries
 - `src/insights.py` — Claude API integration
 - `main.py` — pipeline orchestration
+
+## Architecture
+
+![Clearpath Architecture](architecture.svg)
