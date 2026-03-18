@@ -11,7 +11,10 @@ into plain-English business recommendations for small retail clients.
 
 ## Tech stack
 - Python / pandas
+- AWS S3
 - SQLite
+- dbt Core
+- Apache Airflow
 - Claude API (Anthropic)
 
 ## How to run
