@@ -3,6 +3,7 @@ from src.clean import clean_sales_data
 from src.database import load_to_database
 from src.queries import top_products, daily_revenue, product_velocity
 from src.insights import generate_insights
+from src.s3 import read_csv_from_s3
 
 def run_pipeline(raw_file_path, business_name, business_type):
     """
@@ -15,7 +16,10 @@ def run_pipeline(raw_file_path, business_name, business_type):
 
     # Step 1 - Clean
     print("Cleaning data...")
-    raw_df = pd.read_csv(raw_file_path)
+    raw_df = read_csv_from_s3(
+    bucket_name='clearpath-retail-data',
+    file_key='raw/sales.csv'
+)
     clean_df = clean_sales_data(raw_df)
 
     # Step 2 - Load
