@@ -205,3 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+clearpath_dbt/.user.yml
+clearpath_dbt/target/
+clearpath_dbt/logs/
