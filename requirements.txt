@@ -2,3 +2,4 @@ pandas
 anthropic
 python-dotenv
 boto3
+sendgrid
