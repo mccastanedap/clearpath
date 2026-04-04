@@ -4,7 +4,10 @@
       "Bash(python:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(rm \"C:/Users/mcast/clearpath/app.py\")",
+      "Bash(rm \"C:/Users/mcast/clearpath/requirements_app.txt\")",
+      "Bash(airflow version:*)"
     ]
   }
 }
