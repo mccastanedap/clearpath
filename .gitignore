@@ -210,3 +210,4 @@ __marimo__/
 clearpath_dbt/.user.yml
 clearpath_dbt/target/
 clearpath_dbt/logs/
+.claude/
