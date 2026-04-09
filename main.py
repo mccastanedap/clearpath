@@ -1,4 +1,8 @@
 import sys
+import boto3
+import os
+from dotenv import load_dotenv
+load_dotenv()
 import pandas as pd
 from src.clean import clean_sales_data
 from src.database import load_to_database
@@ -9,9 +13,9 @@ from src.email_sender import send_weekly_insights
 
 # --- Client configuration ---
 CLIENT_NAME = "Juice Bar NYC"
-CLIENT_EMAIL = "client@example.com"
+CLIENT_EMAIL = "melissa.c.castaneda.p@gmail.com"
 
-def run_pipeline(raw_file_path, business_name, business_type):
+def run_pipeline( business_name, business_type):
     """
     Runs the full Clearpath pipeline:
     1. Clean raw sales data
@@ -22,10 +26,33 @@ def run_pipeline(raw_file_path, business_name, business_type):
     """
 
     # Step 1 - Clean
+    
     print("Cleaning data...")
+
+    # Get the most recent file uploaded by this client
+    s3_client = boto3.client(
+        's3',
+        aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+        aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+        region_name=os.getenv('AWS_REGION', 'us-east-1')
+    )
+
+    response = s3_client.list_objects_v2(
+        Bucket='clearpath-retail-data',
+        Prefix=f'uploads/{CLIENT_NAME}/'
+    )
+
+    objects = response.get('Contents', [])
+    if not objects:
+        raise ValueError(f"No files found in S3 for client: {CLIENT_NAME}")
+
+    latest_file = sorted(objects, key=lambda x: x['LastModified'], reverse=True)[0]
+    latest_key = latest_file['Key']
+    print(f"Reading latest file: {latest_key}")
+
     raw_df = read_csv_from_s3(
         bucket_name='clearpath-retail-data',
-        file_key='raw/sales.csv'
+        file_key=latest_key
     )
     clean_df = clean_sales_data(raw_df)
 
@@ -59,7 +86,7 @@ def run_pipeline(raw_file_path, business_name, business_type):
 
 if __name__ == "__main__":
     run_pipeline(
-        raw_file_path='data/raw/sales.csv',
+    
         business_name=CLIENT_NAME,
         business_type='Juice Bar'
     )
