@@ -33,4 +33,4 @@ into plain-English business recommendations for small retail clients.
 
 ## Architecture
 
-![Clearpath Architecture](architecture_diagram.png)
+![Clearpath Architecture](architecture_diagra.png)
