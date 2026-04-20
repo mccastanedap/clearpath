@@ -1,5 +1,21 @@
 version: 2
-
+sources:
+  - name: main
+    description: "Raw data from Clearpath pipeline"
+    tables:
+      - name: sales
+        description: "Raw sales transactions"
+        columns:
+          - name: date
+            tests:
+              - not_null
+          - name: quantity
+            tests:
+              - not_null
+          - name: price
+            tests:
+              - not_null
+              
 models:
   - name: stg_sales
     description: "Cleaned and standardized sales data"

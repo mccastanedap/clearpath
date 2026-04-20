@@ -2,7 +2,7 @@ SELECT
     date,
     product_name,
     SUM(quantity) as total_sold,
-    SUM(quantity * price) as total_revenue
-FROM {{ ref('stg_sales') }}
+    SUM(revenue) as total_revenue
+FROM {{ ref('int_sales_revenue') }}
 GROUP BY product_name
 ORDER BY total_sold DESC 

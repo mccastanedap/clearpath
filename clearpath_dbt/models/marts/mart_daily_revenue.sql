@@ -1,14 +1,8 @@
 
- WITH daily_sales AS (
-        SELECT
-            date,
-            quantity * price as revenue
-        FROM {{ ref('stg_sales') }}
-    )
-    SELECT
-        date,
-        sum(revenue) as total_revenue
-    FROM daily_sales
-    WHERE date >= date((SELECT MAX(date) FROM sales), '-30 days')  
-    GROUP BY date
-    ORDER BY date ASC
+SELECT
+    date,
+    SUM(revenue) as total_revenue
+FROM {{ ref('int_sales_revenue') }}
+WHERE date >= date((SELECT MAX(date) FROM {{ ref('int_sales_revenue') }}), '-30 days')
+GROUP BY date
+ORDER BY date ASC

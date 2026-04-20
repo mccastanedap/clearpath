@@ -138,11 +138,22 @@ celerybeat.pid
 .env
 .envrc
 .venv
+.venv-1/
+.venv-dbt/
+venv-airflow/
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Airflow runtime files
+airflow/*.db
+airflow/*.db-shm
+airflow/*.db-wal
+airflow/passwords.txt
+airflow/*.generated
+airflow/logs/
 
 # Spyder project settings
 .spyderproject

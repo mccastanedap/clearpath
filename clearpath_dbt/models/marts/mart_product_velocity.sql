@@ -5,7 +5,7 @@
                 MIN(date) as first_sale,
                 MAX(date) as last_sale,
                 (julianday(MAX(date)) - julianday(MIN(date))) as days_in_market
-            FROM {{ ref('stg_sales') }}
+            FROM {{ ref('int_sales_revenue') }}
             GROUP BY product_name
         )
         SELECT
