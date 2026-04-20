@@ -2,7 +2,6 @@ import sys
 import boto3
 import os
 from dotenv import load_dotenv
-load_dotenv()
 import pandas as pd
 from src.clean import clean_sales_data
 from src.database import load_to_database
@@ -11,6 +10,8 @@ from src.insights import generate_insights
 from src.s3 import read_csv_from_s3
 from src.email_sender import send_weekly_insights
 
+
+load_dotenv()
 # --- Client configuration ---
 CLIENT_NAME = "Juice Bar NYC"
 CLIENT_EMAIL = "melissa.c.castaneda.p@gmail.com"
