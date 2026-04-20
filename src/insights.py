@@ -36,7 +36,7 @@ def generate_insights(top_products_df, daily_revenue_df, velocity_df, business_n
     """
 
     message = client.messages.create(
-        model="claude-opus-4-6",
+        model="claude-sonnet-4-6",
         max_tokens=1024,
         messages=[{"role": "user", "content": prompt}]
     )
