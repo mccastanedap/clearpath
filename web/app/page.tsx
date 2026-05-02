@@ -40,7 +40,7 @@ export default function UploadPage() {
       }
 
       setStatus("success");
-      setMessage(`Uploaded to ${data.key}`);
+      setMessage("Done! Check your email in a few minutes for your report.");
     } catch (err) {
       setStatus("error");
       setMessage(err instanceof Error ? err.message : "Network error.");
