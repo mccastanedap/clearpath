@@ -1,5 +1,5 @@
 import os
-import re
+import markdown as md
 from dotenv import load_dotenv
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Content, MimeType
@@ -8,29 +8,11 @@ load_dotenv()
 
 
 def _markdown_to_html(text: str) -> str:
-    """Convert the markdown-style insights output to clean HTML."""
-    lines = text.split("\n")
-    html_lines = []
-
-    for line in lines:
-        # ## Heading 2
-        if line.startswith("## "):
-            html_lines.append(f"<h2>{line[3:].strip()}</h2>")
-        # ### Heading 3
-        elif line.startswith("### "):
-            html_lines.append(f"<h3>{line[4:].strip()}</h3>")
-        # Horizontal rule
-        elif line.strip() == "---":
-            html_lines.append("<hr>")
-        # Empty line → paragraph break
-        elif line.strip() == "":
-            html_lines.append("<br>")
-        else:
-            # **bold** → <strong>bold</strong>
-            formatted = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", line)
-            html_lines.append(f"<p>{formatted}</p>")
-
-    return "\n".join(html_lines)
+    """Convert markdown insights text to HTML using the markdown library."""
+    return md.markdown(
+        text,
+        extensions=["tables", "fenced_code", "nl2br", "sane_lists"],
+    )
 
 
 def _build_html_email(client_name: str, insights_text: str) -> str:
