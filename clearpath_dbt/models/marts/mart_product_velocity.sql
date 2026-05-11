@@ -4,7 +4,7 @@
                 SUM(quantity) as total_sold,
                 MIN(date) as first_sale,
                 MAX(date) as last_sale,
-                (julianday(MAX(date)) - julianday(MIN(date))) as days_in_market
+                (MAX(date) - MIN(date)) as days_in_market
             FROM {{ ref('int_sales_revenue') }}
             GROUP BY product_name
         )

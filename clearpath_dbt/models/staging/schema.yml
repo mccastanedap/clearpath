@@ -2,6 +2,7 @@ version: 2
 sources:
   - name: main
     description: "Raw data from Clearpath pipeline"
+    schema: clearpath
     tables:
       - name: sales
         description: "Raw sales transactions"

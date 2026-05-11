@@ -2,10 +2,13 @@ clearpath_dbt:
   target: dev
   outputs:
     dev:
-      type: sqlite
-      threads: 1
-      database: clearpath
-      schema: main
-      schemas_and_paths:
-        main: ../data/clearpath.db
-      schema_directory: ../data
+      type: postgres
+      host: "{{ env_var('SUPABASE_HOST') }}"
+      port: "{{ env_var('SUPABASE_PORT') | int }}"
+      user: "{{ env_var('SUPABASE_USER') }}"
+      password: "{{ env_var('SUPABASE_PASSWORD') }}"
+      dbname: "{{ env_var('SUPABASE_DATABASE') }}"
+      schema: clearpath
+      threads: 4
+      sslmode: require
+      keepalives_idle: 0

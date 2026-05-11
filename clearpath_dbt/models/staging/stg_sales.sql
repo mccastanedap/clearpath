@@ -9,7 +9,7 @@ SELECT
     category,
     size,
     CAST(quantity AS INTEGER) as quantity,
-    CAST(price AS FLOAT) as price,
+    CAST(price AS NUMERIC) as price,
     is_known_product
 FROM {{ source('main', 'sales') }}
 WHERE quantity > 0
