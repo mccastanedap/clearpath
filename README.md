@@ -53,7 +53,7 @@ flowchart TD
     EM --> SG
     SG -. "insights email" .-> Client
 
-    ROADMAP["Roadmap (not implemented yet):<br/>- AWS Lambda scheduling<br/>- Multi-tenant per-client schemas"]:::roadmap
+    ROADMAP["Roadmap:<br/>- AWS Lambda<br/>- Multi-tenant schemas"]:::roadmap
 
     classDef roadmap stroke-dasharray: 5 5,fill:#f5f5f5,color:#666
 ```
