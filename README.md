@@ -21,7 +21,7 @@ flowchart TD
         S3[("S3 bucket<br/>clearpath-retail-data<br/>us-east-1")]
     end
 
-    subgraph PIPE["Pipeline — Python: main.py, manual trigger today"]
+    subgraph PIPE["Pipeline (Python, manual trigger)"]
         S3R["src/s3.py — read CSV"]
         CL["src/clean.py<br/>validate and clean"]
         DB["src/database.py<br/>load to Postgres"]
@@ -31,7 +31,7 @@ flowchart TD
         S3R --> CL --> DB --> DBT --> IN --> EM
     end
 
-    subgraph DW["Data Warehouse: Supabase Postgres<br/>schema clearpath"]
+    subgraph DW["Data Warehouse (Supabase, schema clearpath)"]
         RAW[("sales — raw")]
         STG[("stg_sales — staging")]
         INT[("int_sales_revenue<br/>intermediate")]
@@ -53,7 +53,7 @@ flowchart TD
     EM --> SG
     SG -. "insights email" .-> Client
 
-    ROADMAP["Roadmap (not yet implemented):<br/>AWS Lambda scheduling<br/>+ multi-tenant per-client schemas"]:::roadmap
+    ROADMAP["Roadmap (not implemented yet):<br/>- AWS Lambda scheduling<br/>- Multi-tenant per-client schemas"]:::roadmap
 
     classDef roadmap stroke-dasharray: 5 5,fill:#f5f5f5,color:#666
 ```
