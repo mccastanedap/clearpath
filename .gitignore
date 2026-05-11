@@ -143,17 +143,22 @@ celerybeat.pid
 venv-airflow/
 env/
 venv/
+.venv/
 ENV/
 env.bak/
 venv.bak/
 
 # Airflow runtime files
+airflow/airflow.cfg
 airflow/*.db
 airflow/*.db-shm
 airflow/*.db-wal
 airflow/passwords.txt
 airflow/*.generated
 airflow/logs/
+
+# Local SQLite database
+data/*.db
 
 # Spyder project settings
 .spyderproject
@@ -220,5 +225,6 @@ __marimo__/
 
 clearpath_dbt/.user.yml
 clearpath_dbt/target/
+clearpath_dbt/dbt_packages/
 clearpath_dbt/logs/
 .claude/
