@@ -1,22 +1,23 @@
+import subprocess
 import sys
-import boto3
-import os
-from dotenv import load_dotenv
-import pandas as pd
+from pathlib import Path
+
+from src.aws import get_s3_client
 from src.clean import clean_sales_data
+from src.config import (
+    BUSINESS_TYPE,
+    CLIENT_NAME,
+    REPORT_RECIPIENT_EMAIL,
+    S3_BUCKET_NAME,
+)
 from src.database import load_to_database
-from src.queries import top_products, daily_revenue, product_velocity
-from src.insights import generate_insights
-from src.s3 import read_csv_from_s3
 from src.email_sender import send_weekly_insights
+from src.insights import generate_insights
+from src.queries import daily_revenue, product_velocity, top_products
+from src.s3 import read_csv_from_s3
 
 
-load_dotenv()
-# --- Client configuration ---
-CLIENT_NAME = "Juice Bar NYC"
-CLIENT_EMAIL = "melissa.c.castaneda.p@gmail.com"
-
-def run_pipeline( business_name, business_type):
+def run_pipeline(business_name, business_type):
     """
     Runs the full Clearpath pipeline:
     1. Clean raw sales data
@@ -27,19 +28,13 @@ def run_pipeline( business_name, business_type):
     """
 
     # Step 1 - Clean
-    
     print("Cleaning data...")
 
     # Get the most recent file uploaded by this client
-    s3_client = boto3.client(
-        's3',
-        aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-        aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-        region_name=os.getenv('AWS_REGION', 'us-east-1')
-    )
+    s3_client = get_s3_client()
 
     response = s3_client.list_objects_v2(
-        Bucket='clearpath-retail-data',
+        Bucket=S3_BUCKET_NAME,
         Prefix=f'uploads/{CLIENT_NAME}/'
     )
 
@@ -52,7 +47,7 @@ def run_pipeline( business_name, business_type):
     print(f"Reading latest file: {latest_key}")
 
     raw_df = read_csv_from_s3(
-        bucket_name='clearpath-retail-data',
+        bucket_name=S3_BUCKET_NAME,
         file_key=latest_key
     )
     clean_df = clean_sales_data(raw_df)
@@ -60,6 +55,15 @@ def run_pipeline( business_name, business_type):
     # Step 2 - Load
     print("Loading to database...")
     load_to_database(clean_df, table_name='sales')
+
+    # Step 2.5 - Run dbt models so marts reflect this batch's data
+    print("Running dbt models...")
+    dbt_dir = Path(__file__).resolve().parent / "clearpath_dbt"
+    subprocess.run(
+        [sys.executable, "-m", "dbt.cli.main", "run", "--profiles-dir", "."],
+        cwd=dbt_dir,
+        check=True,
+    )
 
     # Step 3 - Query
     print("Running queries...")
@@ -81,13 +85,13 @@ def run_pipeline( business_name, business_type):
 
     # Step 5 - Email
     print("\nSending weekly insights email...")
-    send_weekly_insights(CLIENT_NAME, CLIENT_EMAIL, insights)
+    send_weekly_insights(CLIENT_NAME, REPORT_RECIPIENT_EMAIL, insights)
 
     return insights
 
+
 if __name__ == "__main__":
     run_pipeline(
-    
         business_name=CLIENT_NAME,
-        business_type='Juice Bar'
+        business_type=BUSINESS_TYPE,
     )
