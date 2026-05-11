@@ -2,17 +2,69 @@
 
 Clearpath turns weekly sales CSVs into plain-English business
 recommendations for small retail clients. Owners upload a CSV through a
-web form; an Airflow DAG cleans, transforms, and analyses it; Claude
+web form; a Python pipeline cleans, transforms, and analyses it; Claude
 generates the recommendations; SendGrid emails the report.
 
 ## Architecture
 
-![Clearpath Architecture](assets/architecture_diagram.png)
+```mermaid
+flowchart TD
+    Client(["Retail client"])
 
+    subgraph FE["Frontend — Vercel"]
+        UI["Next.js upload form<br/>app.clearpathdata.org"]
+        API["Upload API route<br/>web/app/api/upload/route.ts"]
+        UI --> API
+    end
+
+    subgraph AWS["Storage — AWS"]
+        S3[("S3 bucket<br/>clearpath-retail-data<br/>us-east-1")]
+    end
+
+    subgraph PIPE["Pipeline — Python: main.py, manual trigger today"]
+        S3R["src/s3.py — read CSV"]
+        CL["src/clean.py — validate and clean"]
+        DB["src/database.py — load to Postgres"]
+        DBT["dbt run via python -m dbt.cli.main"]
+        IN["src/insights.py<br/>queries marts → Anthropic"]
+        EM["src/email_sender.py — send email"]
+        S3R --> CL --> DB --> DBT --> IN --> EM
+    end
+
+    subgraph DW["Data Warehouse — Supabase Postgres, schema clearpath"]
+        RAW[("sales — raw")]
+        STG[("stg_sales — staging")]
+        INT[("int_sales_revenue — intermediate")]
+        MRT[("mart_daily_revenue<br/>mart_product_velocity<br/>mart_top_products")]
+        RAW --> STG --> INT --> MRT
+    end
+
+    subgraph EXT["AI and Notification"]
+        ANT["Anthropic Claude API"]
+        SG["SendGrid"]
+    end
+
+    Client -- "upload CSV" --> UI
+    API -- "stream PUT" --> S3
+    S3 --> S3R
+    DB -- "TRUNCATE + INSERT" --> RAW
+    DBT -- "materialize" --> STG
+    IN <--> ANT
+    EM --> SG
+    SG -. "insights email" .-> Client
+
+    ROADMAP["Roadmap (not yet implemented):<br/>AWS Lambda scheduling<br/>+ multi-tenant per-client schemas"]:::roadmap
+
+    classDef roadmap stroke-dasharray: 5 5,fill:#f5f5f5,color:#666
 ```
-Next.js upload form  →  S3  →  Airflow DAG  →  dbt models  →  Claude  →  SendGrid email
-     (web/)              (raw uploads)    (clean + load)    (marts)    (insights)
-```
+
+A retail client uploads a weekly sales CSV through the Vercel-hosted
+Next.js form, which streams it to S3. The Python pipeline (`main.py`
+plus the modules under `src/`) reads the CSV, loads it into Supabase
+Postgres, builds the dbt marts, asks Claude for plain-English
+recommendations, and emails them via SendGrid. The pipeline currently
+runs on demand; AWS Lambda scheduling is on the roadmap. An Airflow
+DAG in `dags/` exists as an alternative local orchestrator.
 
 - **`web/`** — Next.js 16 upload UI. The form posts to `web/app/api/upload/route.ts`, which streams the CSV to S3 using `@aws-sdk/client-s3`.
 - **`dags/clearpath_pipeline.py`** — Airflow DAG that runs every Monday at 08:00. Pulls the latest CSV from S3, cleans it, loads it into SQLite, runs dbt, generates insights, and sends the email.
