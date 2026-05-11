@@ -11,21 +11,17 @@ An Airflow DAG that runs every Monday at 8am to:
   7. Email insights to the client
 """
 
-import os
 from datetime import datetime
 
-from dotenv import load_dotenv
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.operators.bash import BashOperator
 from airflow.models import Variable
 
-# ── Load .env so all tasks inherit credentials ────────────────────────────────
-# find .env relative to the project root (one level up from dags/)
-_project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-load_dotenv(os.path.join(_project_root, '.env'))
-
 # ── Source imports ─────────────────────────────────────────────────────────────
+# src.config loads .env (relative to the project root) and validates required
+# settings on import, so all tasks inherit credentials without per-DAG setup.
+from src.config import S3_BUCKET_NAME
 from src.s3 import read_csv_from_s3
 from src.clean import clean_sales_data
 from src.database import load_to_database
@@ -76,7 +72,7 @@ with DAG(
     #   then "XCom" in the task instance pop-up to see the stored JSON string.
 
     def extract():
-        df = read_csv_from_s3('clearpath-retail-data', 'raw/sales.csv')
+        df = read_csv_from_s3(S3_BUCKET_NAME, 'raw/sales.csv')
         return df.to_json()
 
     extract_task = PythonOperator(

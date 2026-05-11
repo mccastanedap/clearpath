@@ -1,7 +1,6 @@
 import anthropic
 
-from dotenv import load_dotenv
-load_dotenv()
+import src.config  # noqa: F401  -- ensures .env is loaded before anthropic reads ANTHROPIC_API_KEY
 
 def generate_insights(top_products_df, daily_revenue_df, velocity_df, business_name, business_type):
     """

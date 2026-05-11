@@ -1,10 +1,8 @@
-import os
 import markdown as md
-from dotenv import load_dotenv
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Content, MimeType
 
-load_dotenv()
+from src.config import FROM_EMAIL, SENDGRID_API_KEY
 
 
 def _markdown_to_html(text: str) -> str:
@@ -54,18 +52,22 @@ def send_weekly_insights(client_name: str, client_email: str, insights_text: str
 
     Returns True on success, False on failure.
     """
-    api_key = os.getenv("SENDGRID_API_KEY")
-    from_email = os.getenv("FROM_EMAIL")
-
-    if not api_key or not from_email:
-        print("Email step skipped: SENDGRID_API_KEY and FROM_EMAIL must be set in your environment.")
+    missing = []
+    if not SENDGRID_API_KEY:
+        missing.append("SENDGRID_API_KEY")
+    if not FROM_EMAIL:
+        missing.append("FROM_EMAIL")
+    if not client_email:
+        missing.append("REPORT_RECIPIENT_EMAIL")
+    if missing:
+        print(f"Email step skipped: missing env var(s): {', '.join(missing)}.")
         return False
 
     subject = f"Weekly Retail Insights for {client_name}"
     html_content = _build_html_email(client_name, insights_text)
 
     message = Mail(
-        from_email=from_email,
+        from_email=FROM_EMAIL,
         to_emails=client_email,
         subject=subject,
     )
@@ -75,7 +77,7 @@ def send_weekly_insights(client_name: str, client_email: str, insights_text: str
     ]
 
     try:
-        sg = SendGridAPIClient(api_key)
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
         print(f"Weekly insights email sent to {client_email} (status {response.status_code}).")
         return True
