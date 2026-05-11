@@ -11,30 +11,30 @@ generates the recommendations; SendGrid emails the report.
 flowchart TD
     Client(["Retail client"])
 
-    subgraph FE["Frontend — Vercel"]
+    subgraph FE["Frontend: Vercel"]
         UI["Next.js upload form<br/>app.clearpathdata.org"]
         API["Upload API route<br/>web/app/api/upload/route.ts"]
         UI --> API
     end
 
-    subgraph AWS["Storage — AWS"]
+    subgraph AWS["Storage: AWS"]
         S3[("S3 bucket<br/>clearpath-retail-data<br/>us-east-1")]
     end
 
     subgraph PIPE["Pipeline — Python: main.py, manual trigger today"]
         S3R["src/s3.py — read CSV"]
-        CL["src/clean.py — validate and clean"]
-        DB["src/database.py — load to Postgres"]
-        DBT["dbt run via python -m dbt.cli.main"]
+        CL["src/clean.py<br/>validate and clean"]
+        DB["src/database.py<br/>load to Postgres"]
+        DBT["dbt run<br/>via python -m dbt.cli.main"]
         IN["src/insights.py<br/>queries marts → Anthropic"]
-        EM["src/email_sender.py — send email"]
+        EM["src/email_sender.py<br/>send email"]
         S3R --> CL --> DB --> DBT --> IN --> EM
     end
 
-    subgraph DW["Data Warehouse — Supabase Postgres, schema clearpath"]
+    subgraph DW["Data Warehouse: Supabase Postgres<br/>schema clearpath"]
         RAW[("sales — raw")]
         STG[("stg_sales — staging")]
-        INT[("int_sales_revenue — intermediate")]
+        INT[("int_sales_revenue<br/>intermediate")]
         MRT[("mart_daily_revenue<br/>mart_product_velocity<br/>mart_top_products")]
         RAW --> STG --> INT --> MRT
     end
