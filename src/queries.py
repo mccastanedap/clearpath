@@ -1,31 +1,38 @@
-import sqlite3
+"""Read queries against the dbt marts in Supabase Postgres."""
+
 import pandas as pd
+
 from src.database import get_connection
 
-def run_query(query, db_path='data/clearpath.db'):
-    conn = get_connection(db_path)
-    df = pd.read_sql_query(query, conn)
-    conn.close()
-    return df
 
-def top_products(limit=5, db_path='data/clearpath.db'):
-    query = f"""
-        SELECT * FROM mart_top_products
-        LIMIT {limit}
-    """
-    return run_query(query, db_path)
+def run_query(query, params=None):
+    """Run a SQL query and return the result as a DataFrame."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(query, params)
+            columns = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+        return pd.DataFrame(rows, columns=columns)
+    finally:
+        conn.close()
 
-def daily_revenue(days=30, db_path='data/clearpath.db'):
-    query = f"""
-        SELECT * FROM mart_daily_revenue
-        ORDER BY date DESC
-        LIMIT {days}
-    """
-    return run_query(query, db_path)
 
-def product_velocity(db_path='data/clearpath.db'):
-    query = """
-        SELECT * FROM mart_product_velocity
-        ORDER BY velocity ASC
-    """
-    return run_query(query, db_path)
+def top_products(limit=5):
+    return run_query(
+        "SELECT * FROM clearpath.mart_top_products LIMIT %s",
+        params=(limit,),
+    )
+
+
+def daily_revenue(days=30):
+    return run_query(
+        "SELECT * FROM clearpath.mart_daily_revenue ORDER BY date DESC LIMIT %s",
+        params=(days,),
+    )
+
+
+def product_velocity():
+    return run_query(
+        "SELECT * FROM clearpath.mart_product_velocity ORDER BY velocity ASC"
+    )

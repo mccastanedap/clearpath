@@ -3,5 +3,5 @@ anthropic
 python-dotenv
 boto3
 sendgrid
-streamlit
 markdown
+psycopg2-binary
