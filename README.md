@@ -63,18 +63,17 @@ Next.js form, which streams it to S3. The Python pipeline (`main.py`
 plus the modules under `src/`) reads the CSV, loads it into Supabase
 Postgres, builds the dbt marts, asks Claude for plain-English
 recommendations, and emails them via SendGrid. The pipeline currently
-runs on demand; AWS Lambda scheduling is on the roadmap. An Airflow
-DAG in `dags/` exists as an alternative local orchestrator.
+runs on demand; AWS Lambda scheduling is on the roadmap. An optional
+Airflow DAG in `dags/` is available for local development.
 
 - **`web/`** — Next.js 16 upload UI. The form posts to `web/app/api/upload/route.ts`, which streams the CSV to S3 using `@aws-sdk/client-s3`.
-- **`dags/clearpath_pipeline.py`** — Airflow DAG that runs every Monday at 08:00. Pulls the latest CSV from S3, cleans it, loads it into SQLite, runs dbt, generates insights, and sends the email.
+- **`dags/clearpath_pipeline.py`** — Optional local Airflow DAG that orchestrates the same pipeline as `main.py`. Kept as an alternative scheduler for local development; the production path is a direct invocation of `main.py` (with AWS Lambda triggering on roadmap).
 - **`src/`** — shared Python pipeline modules used by both the DAG and `main.py`:
   - `config.py` — centralised env-var loading and validation
   - `aws.py` — reusable S3 client factory
   - `s3.py`, `clean.py`, `database.py`, `queries.py`, `insights.py`, `email_sender.py`
 - **`clearpath_dbt/`** — dbt project (staging → intermediate → marts).
-- **`main.py`** — local/manual pipeline runner; useful for testing without Airflow.
-- **`data/raw/`** — gitignored landing zone for local CSVs.
+- **`main.py`** — primary pipeline entrypoint. Reads the latest CSV from S3, loads it into Supabase Postgres, runs dbt, generates insights with Claude, and emails the report via SendGrid.
 - **`data/reference/`** — committed reference data (e.g. `products.csv`).
 
 ## Local development
@@ -124,21 +123,20 @@ python main.py
 python -m dbt.cli.main run
 ```
 
-### Run a pipeline manually
+### Run the pipeline
 
 ```bash
 python main.py
 ```
 
-This pulls the latest CSV from S3 for the configured client, runs the
-full pipeline, and sends the insights email.
+This reads the latest CSV from S3 for the configured client
+(set via `CLIENT_NAME` and `BUSINESS_TYPE` env vars), runs the full
+pipeline, and sends the insights email to `REPORT_RECIPIENT_EMAIL`.
 
-### Run the Airflow DAG
-
-The repo includes a local Airflow setup under `airflow/`. Point
-`AIRFLOW_HOME` at that directory (or use your own) and start the
-scheduler/web server. The DAG `clearpath_pipeline` will appear in the
-UI.
+Optionally, the repo also includes a local Airflow setup under
+`airflow/` for development. Point `AIRFLOW_HOME` at that directory
+and start the scheduler/web server; the `clearpath_pipeline` DAG
+will appear in the UI. This is not required for normal use.
 
 ## Environment variables
 
@@ -166,3 +164,33 @@ at the project root (and from Streamlit secrets if applicable). See
 
 `src/config.py` raises `ConfigError` at import time if `S3_BUCKET_NAME` or any
 of the required `SUPABASE_*` vars are missing, so misconfiguration fails fast.
+
+## Roadmap
+
+The current MVP runs end-to-end with a single retail client. The next
+phases focus on automation, isolation, and operational reliability:
+
+### Pipeline automation
+- AWS Lambda triggered by S3 upload events, replacing manual
+  `python main.py` invocation.
+- Notification to the client once their report has been generated.
+
+### Multi-tenant
+- Add `tenant_id` to `clearpath.sales` so multiple clients can use the
+  same warehouse safely.
+- Per-client routing of insights (each client receives only their own
+  report).
+- Per-client schemas in Supabase for clients requiring stronger
+  isolation guarantees.
+
+### Data quality
+- Schema validation on CSV upload (pydantic or pandera) to reject
+  malformed files with a clear error before they reach the pipeline.
+- Automated tests for the Python pipeline modules (`clean.py`,
+  `database.py`) in addition to the existing dbt tests.
+
+### Customer experience
+- Authenticated upload flow with Supabase Auth (signup, login,
+  per-client identity).
+- Self-service onboarding for approved early-access clients.
+- Dashboard view of past reports.
