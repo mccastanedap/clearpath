@@ -1,4 +1,4 @@
-import markdown as md
+from markdown_it import MarkdownIt
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Content, MimeType
 
@@ -6,11 +6,9 @@ from src.config import FROM_EMAIL, SENDGRID_API_KEY
 
 
 def _markdown_to_html(text: str) -> str:
-    """Convert markdown insights text to HTML using the markdown library."""
-    return md.markdown(
-        text,
-        extensions=["tables", "fenced_code", "nl2br", "sane_lists"],
-    )
+    """Convert markdown insights text to HTML."""
+    md = MarkdownIt("gfm-like")
+    return md.render(text)
 
 
 def _build_html_email(client_name: str, insights_text: str) -> str:

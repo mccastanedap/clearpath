@@ -1,7 +1,8 @@
-pandas
+pandas==2.1.4
 anthropic
 python-dotenv
 boto3
 sendgrid
-markdown
+markdown-it-py
+mdit-py-plugins
 psycopg2-binary

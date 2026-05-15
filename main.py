@@ -95,3 +95,22 @@ if __name__ == "__main__":
         business_name=CLIENT_NAME,
         business_type=BUSINESS_TYPE,
     )
+
+def lambda_handler(event, context):
+    """
+    Entry point for AWS Lambda.
+    Triggered by S3 when a new CSV is uploaded.
+    """
+    try:
+        print("Lambda triggered. Event:", event)
+        insights = run_pipeline(
+            business_name=CLIENT_NAME,
+            business_type=BUSINESS_TYPE,
+        )
+        return {
+            "statusCode": 200,
+            "body": "Pipeline completed successfully."
+        }
+    except Exception as e:
+        print(f"Pipeline failed: {e}")
+        raise
