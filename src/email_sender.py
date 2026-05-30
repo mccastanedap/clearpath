@@ -7,7 +7,7 @@ from src.config import FROM_EMAIL, SENDGRID_API_KEY
 
 def _markdown_to_html(text: str) -> str:
     """Convert markdown insights text to HTML."""
-    md = MarkdownIt("gfm-like")
+    md = MarkdownIt()
     return md.render(text)
 
 
@@ -68,8 +68,8 @@ def send_weekly_insights(client_name: str, client_email: str, insights_text: str
         from_email=FROM_EMAIL,
         to_emails=client_email,
         subject=subject,
-        reply_to="contact@clearpathdata.org",
     )
+    message.reply_to = "contact@clearpathdata.org"
     message.content = [
         Content(MimeType.text, insights_text),
         Content(MimeType.html, html_content),
