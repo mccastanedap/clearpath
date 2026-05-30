@@ -69,7 +69,7 @@ def send_weekly_insights(client_name: str, client_email: str, insights_text: str
         to_emails=client_email,
         subject=subject,
     )
-    message.reply_to = "contact@clearpathdata.org"
+    message.reply_to = "insights@clearpathdata.org"
     message.content = [
         Content(MimeType.text, insights_text),
         Content(MimeType.html, html_content),
