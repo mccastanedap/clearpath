@@ -11,8 +11,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
-load_dotenv(_PROJECT_ROOT / ".env")
-
+if not os.environ.get("AWS_LAMBDA_FUNCTION_NAME"):
+    load_dotenv(_PROJECT_ROOT / ".env")
 
 def _get(key: str, default=None):
     """Read a config value, preferring Streamlit secrets when available."""
