@@ -6,3 +6,5 @@ sendgrid
 markdown-it-py
 mdit-py-plugins
 psycopg2-binary
+dbt-core==1.11.9
+dbt-postgres==1.10.0
