@@ -59,15 +59,14 @@ def run_pipeline(business_name, business_type):
     # Step 2.5 - Run dbt models so marts reflect this batch's data
     print("Running dbt models...")
     dbt_dir = Path(__file__).resolve().parent / "clearpath_dbt"
-    result = subprocess.run(
-        [sys.executable, "-m", "dbt.cli.main", "run", "--profiles-dir", "."],
-        cwd=dbt_dir,
-        capture_output=True,
-        text=True,
+    from dbt.cli.main import dbtRunner
+    dbt_result = dbtRunner().invoke(
+        ["run", "--profiles-dir", str(dbt_dir), "--project-dir", str(dbt_dir)]
     )
-    print("DBT STDOUT:", result.stdout)
-    print("DBT STDERR:", result.stderr)
-    result.check_returncode()
+    if not dbt_result.success:
+        print("DBT FAILED:", dbt_result.exception)
+        raise RuntimeError(f"dbt run failed: {dbt_result.exception}")
+    print("dbt run completed successfully")
 
     # Step 3 - Query
     print("Running queries...")
