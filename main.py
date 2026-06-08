@@ -61,7 +61,8 @@ def run_pipeline(business_name, business_type):
     dbt_dir = Path(__file__).resolve().parent / "clearpath_dbt"
     from dbt.cli.main import dbtRunner
     dbt_result = dbtRunner().invoke(
-        ["run", "--profiles-dir", str(dbt_dir), "--project-dir", str(dbt_dir)]
+        ["run", "--profiles-dir", str(dbt_dir), "--project-dir", str(dbt_dir),
+         "--log-path", "/tmp/dbt_logs", "--target-path", "/tmp/dbt_target"]
     )
     if not dbt_result.success:
         print("DBT FAILED:", dbt_result.exception)
