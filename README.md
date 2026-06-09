@@ -21,11 +21,11 @@ flowchart TD
         S3[("S3 bucket<br/>clearpath-retail-data<br/>us-east-1")]
     end
 
-    subgraph PIPE["Pipeline (Python, manual trigger)"]
+    subgraph PIPE["Pipeline (AWS Lambda, S3-triggered)"]
         S3R["src/s3.py — read CSV"]
         CL["src/clean.py<br/>validate and clean"]
         DB["src/database.py<br/>load to Postgres"]
-        DBT["dbt run<br/>via python -m dbt.cli.main"]
+        DBT["dbt run<br/>via dbtRunner API"]
         IN["src/insights.py<br/>queries marts → Anthropic"]
         EM["src/email_sender.py<br/>send email"]
         S3R --> CL --> DB --> DBT --> IN --> EM
@@ -46,14 +46,14 @@ flowchart TD
 
     Client -- "upload CSV" --> UI
     API -- "stream PUT" --> S3
-    S3 --> S3R
+    S3 -- "ObjectCreated event<br/>auto-invokes Lambda" --> S3R
     DB -- "TRUNCATE + INSERT" --> RAW
     DBT -- "materialize" --> STG
     IN <--> ANT
     EM --> SG
     SG -. "insights email" .-> Client
 
-    ROADMAP["Roadmap:<br/>- AWS Lambda<br/>- Multi-tenant schemas"]:::roadmap
+    ROADMAP["Roadmap:<br/>- Multi-tenant schemas"]:::roadmap
 
     classDef roadmap stroke-dasharray: 5 5,fill:#f5f5f5,color:#666
 ```
@@ -62,12 +62,21 @@ A retail client uploads a weekly sales CSV through the Vercel-hosted
 Next.js form, which streams it to S3. The Python pipeline (`main.py`
 plus the modules under `src/`) reads the CSV, loads it into Supabase
 Postgres, builds the dbt marts, asks Claude for plain-English
-recommendations, and emails them via SendGrid. The pipeline currently
-runs on demand; AWS Lambda scheduling is on the roadmap. An optional
-Airflow DAG in `dags/` is available for local development.
+recommendations, and emails them via SendGrid. The pipeline runs
+automatically: uploading a CSV to S3 fires an S3 `ObjectCreated` event
+that invokes a containerized AWS Lambda function (no manual
+`python main.py` step in production). An optional Airflow DAG in
+`dags/` is available for local development.
+
+The Lambda runs from a Docker image hosted in Amazon ECR, built via AWS
+CodeBuild. It accesses S3 through an IAM role attached to the function —
+no AWS credentials are hardcoded or stored in environment variables. The
+same `src/` modules run locally and inside the Lambda; in the Lambda,
+dbt is executed in-process through the `dbtRunner` API rather than the
+`python -m dbt.cli.main` CLI.
 
 - **`web/`** — Next.js 16 upload UI. The form posts to `web/app/api/upload/route.ts`, which streams the CSV to S3 using `@aws-sdk/client-s3`.
-- **`dags/clearpath_pipeline.py`** — Optional local Airflow DAG that orchestrates the same pipeline as `main.py`. Kept as an alternative scheduler for local development; the production path is a direct invocation of `main.py` (with AWS Lambda triggering on roadmap).
+- **`dags/clearpath_pipeline.py`** — Optional local Airflow DAG that orchestrates the same pipeline as `main.py`. Kept as an alternative scheduler for local development; the production path is the S3-triggered AWS Lambda function.
 - **`src/`** — shared Python pipeline modules used by both the DAG and `main.py`:
   - `config.py` — centralised env-var loading and validation
   - `aws.py` — reusable S3 client factory
@@ -171,8 +180,6 @@ The current MVP runs end-to-end with a single retail client. The next
 phases focus on automation, isolation, and operational reliability:
 
 ### Pipeline automation
-- AWS Lambda triggered by S3 upload events, replacing manual
-  `python main.py` invocation.
 - Notification to the client once their report has been generated.
 
 ### Multi-tenant
