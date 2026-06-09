@@ -2,6 +2,24 @@ import subprocess
 import sys
 from pathlib import Path
 
+# --- Parche para multiprocessing en Lambda (no soporta SemLock) ---
+import multiprocessing.synchronize
+
+class _NoOpLock:
+    def __init__(self, *args, **kwargs):
+        pass
+    def __enter__(self):
+        return self
+    def __exit__(self, *args):
+        pass
+    def acquire(self, *args, **kwargs):
+        return True
+    def release(self, *args, **kwargs):
+        pass
+
+multiprocessing.synchronize.SemLock = _NoOpLock
+# --- Fin del parche ---
+
 from src.aws import get_s3_client
 from src.clean import clean_sales_data
 from src.config import (
