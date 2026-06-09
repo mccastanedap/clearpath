@@ -82,7 +82,7 @@ dbt is executed in-process through the `dbtRunner` API rather than the
   - `aws.py` — reusable S3 client factory
   - `s3.py`, `clean.py`, `database.py`, `queries.py`, `insights.py`, `email_sender.py`
 - **`clearpath_dbt/`** — dbt project (staging → intermediate → marts).
-- **`main.py`** — primary pipeline entrypoint. Reads the latest CSV from S3, loads it into Supabase Postgres, runs dbt, generates insights with Claude, and emails the report via SendGrid.
+- **`main.py`** — local development entrypoint. Reads the latest CSV from S3, loads it into Supabase Postgres, runs dbt, generates insights with Claude, and emails the report via SendGrid. The production deployment invokes the same `src/` modules from the S3-triggered Lambda handler rather than this script.
 - **`data/reference/`** — committed reference data (e.g. `products.csv`).
 
 ## Local development
@@ -132,7 +132,12 @@ python main.py
 python -m dbt.cli.main run
 ```
 
-### Run the pipeline
+### Run the pipeline locally
+
+`python main.py` is the **local development** entrypoint only. In
+production the pipeline runs as the S3-triggered AWS Lambda function
+described in the Architecture section — you do **not** run `main.py`
+manually in production. Use it locally to test the full flow end-to-end:
 
 ```bash
 python main.py
