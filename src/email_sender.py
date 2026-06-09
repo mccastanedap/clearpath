@@ -76,6 +76,7 @@ def send_weekly_insights(client_name: str, client_email: str, insights_text: str
     ]
 
     try:
+	print(f"DEBUG SendGrid key ends with: {SENDGRID_API_KEY[-6:]}, length: {len(SENDGRID_API_KEY)}")
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
         print(f"Weekly insights email sent to {client_email} (status {response.status_code}).")
