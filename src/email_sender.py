@@ -77,10 +77,14 @@ def send_weekly_insights(client_name: str, client_email: str, insights_text: str
 
     try:
         import os
-        sg = SendGridAPIClient(os.environ["SENDGRID_API_KEY"])
+        key = os.environ["SENDGRID_API_KEY"]
+        print(f"Using SendGrid key ending in {key[-6:]}, length {len(key)}")
+        sg = SendGridAPIClient(key)
         response = sg.send(message)
         print(f"Weekly insights email sent to {client_email} (status {response.status_code}).")
         return True
     except Exception as e:
         print(f"Failed to send insights email: {e}")
+        body = getattr(e, "body", None)
+        print(f"SendGrid error detail: {body}")
         return False
