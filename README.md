@@ -5,6 +5,12 @@ recommendations for small retail clients. Owners upload a CSV through a
 web form; a Python pipeline cleans, transforms, and analyses it; Claude
 generates the recommendations; SendGrid emails the report.
 
+> **Two repositories.** Clearpath is split across two repos by responsibility:
+> this one (`clearpath`) is the **data system** — the serverless pipeline on AWS
+> Lambda, dbt, Claude, and the CSV upload tooling — while the public-facing
+> website lives at https://github.com/mccastanedap/clearpath-site. In short, this
+> repo handles data processing; the other handles presentation/marketing.
+
 ## Architecture
 
 ```mermaid
