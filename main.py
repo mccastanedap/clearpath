@@ -5,9 +5,19 @@ from pathlib import Path
 # --- Parche para multiprocessing en Lambda (no soporta SemLock) ---
 import multiprocessing.synchronize
 
+class _NoOpSemlock:
+    def __enter__(self):
+        return self
+    def __exit__(self, *args):
+        pass
+    def acquire(self, *args, **kwargs):
+        return True
+    def release(self, *args, **kwargs):
+        pass
+
 class _NoOpLock:
     def __init__(self, *args, **kwargs):
-        pass
+        self._semlock = _NoOpSemlock()
     def __enter__(self):
         return self
     def __exit__(self, *args):
