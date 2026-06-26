@@ -10,7 +10,7 @@ conn = psycopg2.connect(
     sslmode="require",
 )
 cur = conn.cursor()
-cur.execute("SELECT 1;")
+cur.execute("SELECT COUNT(*) FROM clearpath.sales;")
 print("Keepalive OK:", cur.fetchone())
 cur.close()
 conn.close()
