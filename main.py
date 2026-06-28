@@ -1,6 +1,7 @@
 import subprocess
 import sys
 from pathlib import Path
+from urllib.parse import unquote_plus
 
 # --- Parche para multiprocessing en Lambda (no soporta SemLock) ---
 import multiprocessing.synchronize
@@ -38,14 +39,14 @@ from src.config import (
     REPORT_RECIPIENT_EMAIL,
     S3_BUCKET_NAME,
 )
-from src.database import load_to_database
+from src.database import get_profile_by_user_id, load_to_database
 from src.email_sender import send_weekly_insights
 from src.insights import generate_insights
 from src.queries import daily_revenue, product_velocity, top_products
 from src.s3 import read_csv_from_s3
 
 
-def run_pipeline(business_name, business_type):
+def run_pipeline(business_name=None, business_type=None, recipient_email=None, s3_key=None):
     """
     Runs the full Clearpath pipeline:
     1. Clean raw sales data
@@ -53,30 +54,47 @@ def run_pipeline(business_name, business_type):
     3. Run queries
     4. Generate AI insights
     5. Email insights to client
+
+    In the multi-client (Lambda) flow, the caller passes the client's
+    business_name, business_type and recipient_email (from public.profiles),
+    plus the exact s3_key of the uploaded file to process.
+
+    For local/manual runs, these can be omitted and fall back to config.py
+    (CLIENT_NAME / BUSINESS_TYPE / REPORT_RECIPIENT_EMAIL), reverting to the
+    old behavior of picking the most recent file under uploads/{CLIENT_NAME}/.
     """
+
+    # Fall back to config values for local/manual runs.
+    business_name = business_name or CLIENT_NAME
+    business_type = business_type or BUSINESS_TYPE
+    recipient_email = recipient_email or REPORT_RECIPIENT_EMAIL
 
     # Step 1 - Clean
     print("Cleaning data...")
 
-    # Get the most recent file uploaded by this client
-    s3_client = get_s3_client()
+    if s3_key:
+        # Multi-client flow: process exactly the file from the S3 event.
+        file_key = s3_key
+        print(f"Reading file from event: {file_key}")
+    else:
+        # Local/manual fallback: pick the most recent file for this client.
+        s3_client = get_s3_client()
+        response = s3_client.list_objects_v2(
+            Bucket=S3_BUCKET_NAME,
+            Prefix=f'uploads/{CLIENT_NAME}/'
+        )
 
-    response = s3_client.list_objects_v2(
-        Bucket=S3_BUCKET_NAME,
-        Prefix=f'uploads/{CLIENT_NAME}/'
-    )
+        objects = response.get('Contents', [])
+        if not objects:
+            raise ValueError(f"No files found in S3 for client: {CLIENT_NAME}")
 
-    objects = response.get('Contents', [])
-    if not objects:
-        raise ValueError(f"No files found in S3 for client: {CLIENT_NAME}")
-
-    latest_file = sorted(objects, key=lambda x: x['LastModified'], reverse=True)[0]
-    latest_key = latest_file['Key']
-    print(f"Reading latest file: {latest_key}")
+        latest_file = sorted(objects, key=lambda x: x['LastModified'], reverse=True)[0]
+        file_key = latest_file['Key']
+        print(f"Reading latest file: {file_key}")
 
     raw_df = read_csv_from_s3(
         bucket_name=S3_BUCKET_NAME,
-        file_key=latest_key
+        file_key=file_key
     )
     clean_df = clean_sales_data(raw_df)
 
@@ -118,7 +136,7 @@ def run_pipeline(business_name, business_type):
 
     # Step 5 - Email
     print("\nSending weekly insights email...")
-    send_weekly_insights(CLIENT_NAME, REPORT_RECIPIENT_EMAIL, insights)
+    send_weekly_insights(business_name, recipient_email, insights)
 
     return insights
 
@@ -132,13 +150,50 @@ if __name__ == "__main__":
 def lambda_handler(event, context):
     """
     Entry point for AWS Lambda.
-    Triggered by S3 when a new CSV is uploaded.
+    Triggered by S3 when a new CSV is uploaded to uploads/{user_uid}/file.csv.
+
+    Resolves the client identity from the upload path (the Supabase Auth UID)
+    and public.profiles, then runs the pipeline for that specific file.
     """
     try:
         print("Lambda triggered. Event:", event)
-        insights = run_pipeline(
-            business_name=CLIENT_NAME,
-            business_type=BUSINESS_TYPE,
+
+        # Extract the S3 object key from the event (S3 keys are URL-encoded).
+        raw_key = event['Records'][0]['s3']['object']['key']
+        s3_key = unquote_plus(raw_key)
+        print(f"Processing S3 key: {s3_key}")
+
+        # Parse the user UID: the segment right after "uploads/".
+        parts = s3_key.split('/')
+        if len(parts) < 3 or parts[0] != 'uploads' or not parts[1]:
+            msg = (
+                f"Unexpected S3 key format: '{s3_key}'. "
+                "Expected 'uploads/{user_uid}/<file>.csv'. Aborting."
+            )
+            print(f"ERROR: {msg}")
+            return {"statusCode": 400, "body": msg}
+
+        user_uid = parts[1]
+        print(f"Resolved user UID: {user_uid}")
+
+        # Look up the client's profile by their Supabase Auth UID.
+        profile = get_profile_by_user_id(user_uid)
+        if profile is None:
+            msg = f"No profile found for user {user_uid}"
+            print(f"ERROR: {msg}")
+            return {"statusCode": 404, "body": msg}
+
+        print(
+            f"Profile found for {user_uid}: "
+            f"business_name={profile['business_name']!r}, "
+            f"business_type={profile['business_type']!r}"
+        )
+
+        run_pipeline(
+            business_name=profile["business_name"],
+            business_type=profile["business_type"],
+            recipient_email=profile["email"],
+            s3_key=s3_key,
         )
         return {
             "statusCode": 200,

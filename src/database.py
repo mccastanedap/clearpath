@@ -26,6 +26,35 @@ def get_connection():
     )
 
 
+def get_profile_by_user_id(user_id):
+    """
+    Look up a client profile in public.profiles by their Supabase Auth UID.
+
+    Returns a dict with keys business_name, business_type, email, or None if
+    no profile matches the given user_id.
+    """
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT business_name, business_type, email "
+                "FROM public.profiles WHERE user_id = %s",
+                (user_id,),
+            )
+            row = cur.fetchone()
+    finally:
+        conn.close()
+
+    if row is None:
+        return None
+
+    return {
+        "business_name": row[0],
+        "business_type": row[1],
+        "email": row[2],
+    }
+
+
 def load_to_database(df, table_name, schema="clearpath"):
     """
     Replace the contents of {schema}.{table_name} with df rows.
