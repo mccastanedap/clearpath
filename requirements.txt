@@ -1,9 +1,11 @@
 pandas==2.1.4
-
+dbt-core==1.11.9
+dbt-postgres==1.10.0
 anthropic
 python-dotenv
 boto3
 sendgrid
+resend
 markdown-it-py
 mdit-py-plugins
 psycopg2-binary
