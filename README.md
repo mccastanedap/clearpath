@@ -3,7 +3,7 @@
 Clearpath turns weekly sales CSVs into plain-English business
 recommendations for small retail clients. Owners upload a CSV through a
 web form; a Python pipeline cleans, transforms, and analyses it; Claude
-generates the recommendations; SendGrid emails the report.
+generates the recommendations; Resend emails the report.
 
 > **Two repositories.** Clearpath is split across two repos by responsibility:
 > this one (`clearpath`) is the **data system** — the serverless pipeline on AWS
@@ -47,7 +47,7 @@ flowchart TD
 
     subgraph EXT["AI and Notification"]
         ANT["Anthropic Claude API"]
-        SG["SendGrid"]
+        SG["Resend"]
     end
 
     Client -- "upload CSV" --> UI
@@ -68,7 +68,7 @@ A retail client uploads a weekly sales CSV through the Vercel-hosted
 Next.js form, which streams it to S3. The Python pipeline (`main.py`
 plus the modules under `src/`) reads the CSV, loads it into Supabase
 Postgres, builds the dbt marts, asks Claude for plain-English
-recommendations, and emails them via SendGrid. The pipeline runs
+recommendations, and emails them via Resend. The pipeline runs
 automatically: uploading a CSV to S3 fires an S3 `ObjectCreated` event
 that invokes a containerized AWS Lambda function (no manual
 `python main.py` step in production). An optional Airflow DAG in
@@ -88,7 +88,7 @@ dbt is executed in-process through the `dbtRunner` API rather than the
   - `aws.py` — reusable S3 client factory
   - `s3.py`, `clean.py`, `database.py`, `queries.py`, `insights.py`, `email_sender.py`
 - **`clearpath_dbt/`** — dbt project (staging → intermediate → marts).
-- **`main.py`** — local development entrypoint. Reads the latest CSV from S3, loads it into Supabase Postgres, runs dbt, generates insights with Claude, and emails the report via SendGrid. The production deployment invokes the same `src/` modules from the S3-triggered Lambda handler rather than this script.
+- **`main.py`** — local development entrypoint. Reads the latest CSV from S3, loads it into Supabase Postgres, runs dbt, generates insights with Claude, and emails the report via Resend. The production deployment invokes the same `src/` modules from the S3-triggered Lambda handler rather than this script.
 - **`data/reference/`** — committed reference data (e.g. `products.csv`).
 
 ## Local development
@@ -99,7 +99,7 @@ dbt is executed in-process through the `dbtRunner` API rather than the
 - Node.js 20+ and npm
 - An AWS account with an S3 bucket
 - An Anthropic API key
-- A SendGrid account (optional — the email step skips itself if creds are missing)
+- A Resend account (optional — the email step skips itself if creds are missing)
 
 ### Setup
 
@@ -177,8 +177,9 @@ at the project root (and from Streamlit secrets if applicable). See
 | `SUPABASE_DATABASE` | yes | — | Usually `postgres` |
 | `CLIENT_NAME` | no | `Juice Bar NYC` | Used by `main.py` |
 | `BUSINESS_TYPE` | no | `Juice Bar` | |
-| `SENDGRID_API_KEY` | no | — | Email step is skipped if missing |
+| `RESEND_API_KEY` | no | — | Email step is skipped if missing |
 | `FROM_EMAIL` | no | — | Email step is skipped if missing |
+| `REPLY_TO_EMAIL` | no | `insights@clearpathdata.org` | Reply-To header on the email |
 | `REPORT_RECIPIENT_EMAIL` | no | — | Email step is skipped if missing |
 | `ANTHROPIC_API_KEY` | yes (for insights) | — | Read by the `anthropic` SDK |
 
