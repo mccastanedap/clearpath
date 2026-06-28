@@ -1,8 +1,11 @@
+import resend
 from markdown_it import MarkdownIt
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail, Content, MimeType
 
-from src.config import FROM_EMAIL, SENDGRID_API_KEY
+# SendGrid imports kept commented as a fallback during the Resend migration.
+# from sendgrid import SendGridAPIClient
+# from sendgrid.helpers.mail import Mail, Content, MimeType
+
+from src.config import FROM_EMAIL, REPLY_TO_EMAIL, RESEND_API_KEY
 
 
 def _markdown_to_html(text: str) -> str:
@@ -46,13 +49,13 @@ def _build_html_email(client_name: str, insights_text: str) -> str:
 
 def send_weekly_insights(client_name: str, client_email: str, insights_text: str) -> bool:
     """
-    Send the weekly insights email to a client via SendGrid.
+    Send the weekly insights email to a client via Resend.
 
     Returns True on success, False on failure.
     """
     missing = []
-    if not SENDGRID_API_KEY:
-        missing.append("SENDGRID_API_KEY")
+    if not RESEND_API_KEY:
+        missing.append("RESEND_API_KEY")
     if not FROM_EMAIL:
         missing.append("FROM_EMAIL")
     if not client_email:
@@ -64,22 +67,46 @@ def send_weekly_insights(client_name: str, client_email: str, insights_text: str
     subject = f"Weekly Retail Insights for {client_name}"
     html_content = _build_html_email(client_name, insights_text)
 
-    message = Mail(
-        from_email=FROM_EMAIL,
-        to_emails=client_email,
-        subject=subject,
-    )
-    message.reply_to = "insights@clearpathdata.org"
-    message.content = [
-        Content(MimeType.text, insights_text),
-        Content(MimeType.html, html_content),
-    ]
-
     try:
-        sg = SendGridAPIClient(SENDGRID_API_KEY)
-        response = sg.send(message)
-        print(f"Weekly insights email sent to {client_email} (status {response.status_code}).")
+        resend.api_key = RESEND_API_KEY
+        response = resend.Emails.send({
+            "from": FROM_EMAIL,
+            "to": client_email,
+            "subject": subject,
+            "html": html_content,
+            "text": insights_text,
+            "reply_to": REPLY_TO_EMAIL,
+        })
+        email_id = response.get("id") if isinstance(response, dict) else None
+        if email_id:
+            print(f"Weekly insights email sent to {client_email} (id: {email_id}).")
+        else:
+            print(f"Weekly insights email sent to {client_email}.")
         return True
     except Exception as e:
         print(f"Failed to send insights email: {e}")
         return False
+
+    # --- SendGrid backup (pre-Resend migration) ---
+    # subject = f"Weekly Retail Insights for {client_name}"
+    # html_content = _build_html_email(client_name, insights_text)
+    #
+    # message = Mail(
+    #     from_email=FROM_EMAIL,
+    #     to_emails=client_email,
+    #     subject=subject,
+    # )
+    # message.reply_to = "insights@clearpathdata.org"
+    # message.content = [
+    #     Content(MimeType.text, insights_text),
+    #     Content(MimeType.html, html_content),
+    # ]
+    #
+    # try:
+    #     sg = SendGridAPIClient(SENDGRID_API_KEY)
+    #     response = sg.send(message)
+    #     print(f"Weekly insights email sent to {client_email} (status {response.status_code}).")
+    #     return True
+    # except Exception as e:
+    #     print(f"Failed to send insights email: {e}")
+    #     return False
