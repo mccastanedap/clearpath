@@ -223,7 +223,7 @@ with DAG(
     )
 
     # ── TASK 7: send_email ─────────────────────────────────────────────────────
-    # Pulls insights text from XCom and emails it to the client via SendGrid.
+    # Pulls insights text from XCom and emails it to the client via Resend.
     #
     # CONCEPT — Airflow Variables for config:
     #   client_email is stored as a Variable so you can update the recipient
@@ -236,7 +236,7 @@ with DAG(
     #
     # AIRFLOW UI:
     #   When this box turns green the email has been sent. Logs show the
-    #   SendGrid HTTP status code (202 = accepted for delivery).
+    #   Resend email id returned by the API.
 
     def do_send_email(**context):
         insights_text = context['ti'].xcom_pull(task_ids='generate_insights')

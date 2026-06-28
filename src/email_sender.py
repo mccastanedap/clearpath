@@ -1,10 +1,6 @@
 import resend
 from markdown_it import MarkdownIt
 
-# SendGrid imports kept commented as a fallback during the Resend migration.
-# from sendgrid import SendGridAPIClient
-# from sendgrid.helpers.mail import Mail, Content, MimeType
-
 from src.config import FROM_EMAIL, REPLY_TO_EMAIL, RESEND_API_KEY
 
 
@@ -86,27 +82,3 @@ def send_weekly_insights(client_name: str, client_email: str, insights_text: str
     except Exception as e:
         print(f"Failed to send insights email: {e}")
         return False
-
-    # --- SendGrid backup (pre-Resend migration) ---
-    # subject = f"Weekly Retail Insights for {client_name}"
-    # html_content = _build_html_email(client_name, insights_text)
-    #
-    # message = Mail(
-    #     from_email=FROM_EMAIL,
-    #     to_emails=client_email,
-    #     subject=subject,
-    # )
-    # message.reply_to = "insights@clearpathdata.org"
-    # message.content = [
-    #     Content(MimeType.text, insights_text),
-    #     Content(MimeType.html, html_content),
-    # ]
-    #
-    # try:
-    #     sg = SendGridAPIClient(SENDGRID_API_KEY)
-    #     response = sg.send(message)
-    #     print(f"Weekly insights email sent to {client_email} (status {response.status_code}).")
-    #     return True
-    # except Exception as e:
-    #     print(f"Failed to send insights email: {e}")
-    #     return False

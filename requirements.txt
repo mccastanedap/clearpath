@@ -4,7 +4,6 @@ dbt-postgres==1.10.0
 anthropic
 python-dotenv
 boto3
-sendgrid
 resend
 markdown-it-py
 mdit-py-plugins

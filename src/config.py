@@ -48,9 +48,8 @@ CLIENT_NAME = _get("CLIENT_NAME", "Juice Bar NYC")
 REPORT_RECIPIENT_EMAIL = _get("REPORT_RECIPIENT_EMAIL")
 BUSINESS_TYPE = _get("BUSINESS_TYPE", "Juice Bar")
 
-# Email (Resend; SendGrid kept as fallback during migration)
+# Email (Resend)
 RESEND_API_KEY = _get("RESEND_API_KEY")
-SENDGRID_API_KEY = _get("SENDGRID_API_KEY")
 FROM_EMAIL = _get("FROM_EMAIL")
 REPLY_TO_EMAIL = _get("REPLY_TO_EMAIL", "insights@clearpathdata.org")
 

@@ -33,8 +33,9 @@ $required = @(
     "ANTHROPIC_API_KEY"
 )
 $optional = @(
-    "SENDGRID_API_KEY",
+    "RESEND_API_KEY",
     "FROM_EMAIL",
+    "REPLY_TO_EMAIL",
     "REPORT_RECIPIENT_EMAIL"
 )
 
