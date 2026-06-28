@@ -1,21 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase-browser";
 
 type Status = "idle" | "uploading" | "success" | "error";
 
+const LOGIN_URL = "https://clearpathdata.org/login";
+
 export default function UploadPage() {
-  const [businessName, setBusinessName] = useState("Juice Bar NYC");
+  const [authChecked, setAuthChecked] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
 
+  // Verify the user has a Supabase session before showing the upload UI.
+  // The session arrives via a cookie scoped to .clearpathdata.org, written by
+  // the login app on another subdomain. No session -> redirect to login.
+  useEffect(() => {
+    const supabase = createClient();
+
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (error || !data.user) {
+        window.location.href = LOGIN_URL;
+        return;
+      }
+      setAuthChecked(true);
+    });
+  }, []);
+
   async function handleUpload() {
-    if (!businessName.trim()) {
-      setStatus("error");
-      setMessage("Please enter a business name.");
-      return;
-    }
     if (!file) {
       setStatus("error");
       setMessage("Please select a CSV file.");
@@ -27,7 +40,6 @@ export default function UploadPage() {
 
     try {
       const formData = new FormData();
-      formData.append("businessName", businessName.trim());
       formData.append("file", file);
 
       const res = await fetch("/api/upload", { method: "POST", body: formData });
@@ -48,6 +60,15 @@ export default function UploadPage() {
   }
 
   const isUploading = status === "uploading";
+
+  // While we confirm the session, don't render the upload page at all.
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-[#f0f7f8] flex items-center justify-center px-5">
+        <p className="text-sm text-neutral-500">Loading…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#f0f7f8] flex items-center justify-center px-5">
@@ -72,18 +93,6 @@ export default function UploadPage() {
           </p>
 
           <div className="mt-12 space-y-8">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700 mb-2">Business name</label>
-              <input
-                type="text"
-                placeholder="e.g. Juice Bar NYC"
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                disabled={isUploading}
-                className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 placeholder-neutral-400 outline-none focus:border-[#64b8c0] focus:ring-2 focus:ring-[#64b8c0]/20 transition disabled:opacity-60"
-              />
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">Sales CSV</label>
               <input

@@ -1,5 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# Re-include the app's lib/ folder (the root .gitignore ignores lib/ for Python builds)
+!/lib/
+
 # dependencies
 /node_modules
 /.pnp

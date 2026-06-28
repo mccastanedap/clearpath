@@ -1,19 +1,26 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { createClient } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("file");
-    const businessName = formData.get("businessName");
+    // Identify the user from the Supabase session cookie (.clearpathdata.org).
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    if (!businessName || typeof businessName !== "string" || !businessName.trim()) {
+    if (authError || !user) {
       return Response.json(
-        { ok: false, error: "Missing business name." },
-        { status: 400 }
+        { ok: false, error: "Unauthorized." },
+        { status: 401 }
       );
     }
+
+    const formData = await req.formData();
+    const file = formData.get("file");
 
     if (!file || !(file instanceof File)) {
       return Response.json(
@@ -41,7 +48,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const key = `uploads/${businessName.trim()}/${Date.now()}-${file.name}`;
+    const key = `uploads/${user.id}/${Date.now()}-${file.name}`;
     const body = Buffer.from(await file.arrayBuffer());
 
     const s3 = new S3Client({
