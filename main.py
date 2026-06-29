@@ -36,6 +36,7 @@ from src.clean import clean_sales_data
 from src.config import (
     BUSINESS_TYPE,
     CLIENT_NAME,
+    DEV_CLIENT_ID,
     REPORT_RECIPIENT_EMAIL,
     S3_BUCKET_NAME,
 )
@@ -46,7 +47,8 @@ from src.queries import daily_revenue, product_velocity, top_products
 from src.s3 import read_csv_from_s3
 
 
-def run_pipeline(business_name=None, business_type=None, recipient_email=None, s3_key=None):
+def run_pipeline(business_name=None, business_type=None, recipient_email=None,
+                 s3_key=None, user_uid=None):
     """
     Runs the full Clearpath pipeline:
     1. Clean raw sales data
@@ -57,7 +59,9 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None, s
 
     In the multi-client (Lambda) flow, the caller passes the client's
     business_name, business_type and recipient_email (from public.profiles),
-    plus the exact s3_key of the uploaded file to process.
+    plus the exact s3_key of the uploaded file to process, and user_uid (the
+    Supabase Auth UID) which is used as client_id to keep each client's data
+    separated in the warehouse.
 
     For local/manual runs, these can be omitted and fall back to config.py
     (CLIENT_NAME / BUSINESS_TYPE / REPORT_RECIPIENT_EMAIL), reverting to the
@@ -68,6 +72,10 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None, s
     business_name = business_name or CLIENT_NAME
     business_type = business_type or BUSINESS_TYPE
     recipient_email = recipient_email or REPORT_RECIPIENT_EMAIL
+
+    # Lambda passes the real Supabase Auth UID; local/manual runs have none,
+    # so use the fixed DEV_CLIENT_ID so load and queries share one tenant.
+    client_id = user_uid or DEV_CLIENT_ID
 
     # Step 1 - Clean
     print("Cleaning data...")
@@ -100,7 +108,7 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None, s
 
     # Step 2 - Load
     print("Loading to database...")
-    load_to_database(clean_df, table_name='sales')
+    load_to_database(clean_df, table_name='sales', client_id=client_id)
 
     # Step 2.5 - Run dbt models so marts reflect this batch's data
     print("Running dbt models...")
@@ -118,9 +126,9 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None, s
 
     # Step 3 - Query
     print("Running queries...")
-    top_df = top_products()
-    revenue_df = daily_revenue()
-    velocity_df = product_velocity()
+    top_df = top_products(client_id=client_id)
+    revenue_df = daily_revenue(client_id=client_id)
+    velocity_df = product_velocity(client_id=client_id)
 
     # Step 4 - Insights
     print("Generating insights...")
@@ -194,6 +202,7 @@ def lambda_handler(event, context):
             business_type=profile["business_type"],
             recipient_email=profile["email"],
             s3_key=s3_key,
+            user_uid=user_uid,
         )
         return {
             "statusCode": 200,

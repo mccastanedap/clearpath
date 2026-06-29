@@ -48,6 +48,11 @@ CLIENT_NAME = _get("CLIENT_NAME", "Juice Bar NYC")
 REPORT_RECIPIENT_EMAIL = _get("REPORT_RECIPIENT_EMAIL")
 BUSINESS_TYPE = _get("BUSINESS_TYPE", "Juice Bar")
 
+# Fixed client_id used by local/manual runs (no Supabase Auth UID from S3).
+# Defaults to Melissa's UID so local loads and queries share one tenant and
+# insights aren't empty. Lambda always uses the real per-upload user_uid.
+DEV_CLIENT_ID = _get("DEV_CLIENT_ID", "4a5dcab0-6da8-4ef3-93de-ec6ba3fe2082")
+
 # Email (Resend)
 RESEND_API_KEY = _get("RESEND_API_KEY")
 FROM_EMAIL = _get("FROM_EMAIL")

@@ -18,21 +18,25 @@ def run_query(query, params=None):
         conn.close()
 
 
-def top_products(limit=5):
+def top_products(client_id, limit=5):
     return run_query(
-        "SELECT * FROM clearpath.mart_top_products LIMIT %s",
-        params=(limit,),
+        "SELECT * FROM clearpath.mart_top_products "
+        "WHERE client_id = %s LIMIT %s",
+        params=(client_id, limit),
     )
 
 
-def daily_revenue(days=30):
+def daily_revenue(client_id, days=30):
     return run_query(
-        "SELECT * FROM clearpath.mart_daily_revenue ORDER BY date DESC LIMIT %s",
-        params=(days,),
+        "SELECT * FROM clearpath.mart_daily_revenue "
+        "WHERE client_id = %s ORDER BY date DESC LIMIT %s",
+        params=(client_id, days),
     )
 
 
-def product_velocity():
+def product_velocity(client_id):
     return run_query(
-        "SELECT * FROM clearpath.mart_product_velocity ORDER BY velocity ASC"
+        "SELECT * FROM clearpath.mart_product_velocity "
+        "WHERE client_id = %s ORDER BY velocity ASC",
+        params=(client_id,),
     )

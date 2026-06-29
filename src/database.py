@@ -55,24 +55,50 @@ def get_profile_by_user_id(user_id):
     }
 
 
-def load_to_database(df, table_name, schema="clearpath"):
+def load_to_database(df, table_name, schema="clearpath", client_id=None):
     """
-    Replace the contents of {schema}.{table_name} with df rows.
-    TRUNCATE + bulk INSERT in a single transaction, so re-runs are idempotent.
+    Replace this client's rows in {schema}.{table_name} with df rows.
+
+    Multi-tenant mode (client_id given): DELETE only the rows belonging to
+    client_id, then bulk INSERT df rows stamped with that client_id. The
+    client_id is added as an extra column on every inserted row, so callers
+    don't need it in the DataFrame. DELETE + INSERT run in one transaction,
+    so a client's re-upload is idempotent and never touches other clients.
+
+    Legacy mode (client_id is None): falls back to the old TRUNCATE + INSERT
+    of the whole table, preserving behavior for any non-tenant callers.
     """
     if df.empty:
         print(f"No rows to load into {schema}.{table_name}")
         return
 
     columns = list(df.columns)
-    rows = [
-        tuple(None if pd.isna(v) else v for v in row)
-        for row in df.itertuples(index=False, name=None)
-    ]
 
     table_ref = sql.Identifier(schema, table_name)
-    col_list = sql.SQL(", ").join(sql.Identifier(c) for c in columns)
-    truncate_stmt = sql.SQL("TRUNCATE TABLE {tbl}").format(tbl=table_ref)
+
+    if client_id is not None:
+        # Per-client: stamp client_id onto every row and only clear this
+        # client's existing rows (never the whole table).
+        insert_cols = columns + ["client_id"]
+        rows = [
+            tuple(None if pd.isna(v) else v for v in row) + (client_id,)
+            for row in df.itertuples(index=False, name=None)
+        ]
+        col_list = sql.SQL(", ").join(sql.Identifier(c) for c in insert_cols)
+        clear_stmt = sql.SQL(
+            "DELETE FROM {tbl} WHERE client_id = %s"
+        ).format(tbl=table_ref)
+        clear_params = (client_id,)
+    else:
+        # Legacy single-tenant behavior: wipe the whole table.
+        rows = [
+            tuple(None if pd.isna(v) else v for v in row)
+            for row in df.itertuples(index=False, name=None)
+        ]
+        col_list = sql.SQL(", ").join(sql.Identifier(c) for c in columns)
+        clear_stmt = sql.SQL("TRUNCATE TABLE {tbl}").format(tbl=table_ref)
+        clear_params = None
+
     insert_stmt = sql.SQL("INSERT INTO {tbl} ({cols}) VALUES %s").format(
         tbl=table_ref, cols=col_list
     )
@@ -80,7 +106,7 @@ def load_to_database(df, table_name, schema="clearpath"):
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute(truncate_stmt)
+            cur.execute(clear_stmt, clear_params)
             execute_values(cur, insert_stmt.as_string(cur), rows)
         conn.commit()
     except Exception:

@@ -4,6 +4,7 @@
 
 
 SELECT
+    client_id,
     date,
     product_name,
     category,
