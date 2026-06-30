@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py .
 COPY src/ src/
 COPY clearpath_dbt/ clearpath_dbt/
+COPY templates/ templates/
 
 # Handler de Lambda
 CMD ["main.lambda_handler"]
