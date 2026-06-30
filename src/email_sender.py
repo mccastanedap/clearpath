@@ -5,6 +5,7 @@ from pathlib import Path
 from src.config import FROM_EMAIL, REPLY_TO_EMAIL, RESEND_API_KEY
 
 INSIGHTS_TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "templates" / "insights_email.html"
+ERROR_TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "templates" / "error_email.html"
 
 _INSIGHTS_FALLBACK_HTML = """\
 <html><body style="font-family:Arial,sans-serif;color:#222;max-width:600px;margin:auto;padding:24px;">
@@ -17,6 +18,18 @@ Total revenue: {{week_revenue}} {{delta_line}}</p>
 <p><strong>{{step3_title}}</strong><br>{{step3_desc}}</p>
 <p><a href="{{cta_url}}">{{cta_label}}</a></p>
 <p style="color:#888;font-size:12px;">{{week_range}} &middot; Next report: {{next_report}} &middot; Powered by Clearpath</p>
+</body></html>"""
+
+_ERROR_FALLBACK_HTML = """\
+<html><body style="font-family:Arial,sans-serif;color:#222;max-width:600px;margin:auto;padding:24px;">
+<h1 style="color:#112b50;">We couldn't process your file</h1>
+<p>Hi {{client_name}},</p>
+<p>We received your upload, but we weren't able to generate your insights. Here's what went wrong:</p>
+<p style="background:#fdf2f2;border-left:4px solid #d64545;padding:12px 16px;color:#7a1f1f;">{{error_message}}</p>
+<p>Your CSV should have exactly these columns: <code>{{required_columns}}</code></p>
+<p>Please fix the file and upload it again. If you keep seeing this, just reply to this email and we'll help.</p>
+<p><a href="{{cta_url}}">{{cta_label}}</a></p>
+<p style="color:#888;font-size:12px;">Powered by Clearpath</p>
 </body></html>"""
 
 
@@ -34,6 +47,13 @@ def _flatten_report(report):
         "top_product_name": report.get("top_product_name", ""),
         "top_product_units": str(report.get("top_product_units", "")),
         "top_product_revenue": report.get("top_product_revenue", ""),
+        "top2_name": report.get("top2_name", ""),
+        "top2_units": str(report.get("top2_units", "")),
+        "top2_revenue": report.get("top2_revenue", ""),
+        "top3_name": report.get("top3_name", ""),
+        "top3_units": str(report.get("top3_units", "")),
+        "top3_revenue": report.get("top3_revenue", ""),
+        "slow_product_name": report.get("slow_product_name", ""),
         "week_revenue": report.get("week_revenue", ""),
         "delta_line": delta_line,
         "step1_title": steps[0]["title"], "step1_desc": steps[0]["description"],
@@ -104,42 +124,20 @@ def send_weekly_insights(client_email, report):
 
 
 def _build_error_email(client_name: str, error_message: str) -> str:
-    client_name = client_name or "there"
-    required = ", ".join(["date", "product_name", "category", "size", "quantity", "price"])
-    return f"""<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body {{ font-family: Arial, sans-serif; color: #222; max-width: 700px; margin: auto; padding: 24px; }}
-    .header {{ background: #1a1a2e; color: #fff; padding: 20px 24px; border-radius: 6px 6px 0 0; }}
-    .header h1 {{ margin: 0; font-size: 22px; }}
-    .header p {{ margin: 4px 0 0; font-size: 14px; color: #aaa; }}
-    .content {{ padding: 24px; border: 1px solid #e0e0e0; border-top: none; }}
-    .notice {{ background: #fdf2f2; border-left: 4px solid #d64545; padding: 12px 16px;
-               border-radius: 4px; color: #7a1f1f; margin: 0 0 16px; }}
-    .content p {{ line-height: 1.6; }}
-    code {{ background: #f3f3f3; padding: 2px 6px; border-radius: 4px; font-size: 13px; }}
-    .footer {{ background: #f5f5f5; color: #888; font-size: 12px; text-align: center;
-               padding: 12px; border: 1px solid #e0e0e0; border-top: none;
-               border-radius: 0 0 6px 6px; }}
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>We couldn't process your file</h1>
-    <p>Clearpath retail analytics</p>
-  </div>
-  <div class="content">
-    <p>Hi {client_name},</p>
-    <p>We received your upload, but we weren't able to generate your insights. Here's what went wrong:</p>
-    <div class="notice">{error_message}</div>
-    <p>Your CSV should have exactly these columns: <code>{required}</code>.</p>
-    <p>Please fix the file and upload it again. If you keep seeing this, just reply to this email and we'll help.</p>
-  </div>
-  <div class="footer">Powered by Clearpath</div>
-</body>
-</html>"""
+    values = {
+        "client_name": client_name or "there",
+        "error_message": error_message or "",
+        "required_columns": ", ".join(["date", "product_name", "category", "size", "quantity", "price"]),
+        "cta_url": "https://app.clearpathdata.org",
+        "cta_label": "Open your portal",
+    }
+    try:
+        html = ERROR_TEMPLATE_PATH.read_text(encoding="utf-8")
+    except Exception:
+        html = _ERROR_FALLBACK_HTML
+    for key, value in values.items():
+        html = html.replace("{{" + key + "}}", str(value))
+    return html
 
 
 def send_csv_error(client_name: str, client_email: str, error_message: str) -> bool:

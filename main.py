@@ -149,7 +149,7 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None,
     revenue_df = daily_revenue(client_id=client_id)
     velocity_df = product_velocity(client_id=client_id)
 
-    # Step 4 - Insights (now returns {"headline": ..., "steps": [...]})
+    # Step 4 - Insights (returns {"headline": ..., "steps": [...]})
     print("Generating insights...")
     insights = generate_insights(
         top_df, revenue_df, velocity_df,
@@ -157,8 +157,22 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None,
     )
 
     # Step 4.5 - Build the report the email needs, from data we already have
-    top_sorted = top_df.sort_values("total_sold", ascending=False)
-    top_row = top_sorted.iloc[0] if not top_sorted.empty else None
+    top_sorted = top_df.sort_values("total_sold", ascending=False).reset_index(drop=True)
+
+    def _row(df, i):
+        return df.iloc[i] if len(df) > i else None
+
+    def _name(r):
+        return str(r["product_name"]) if r is not None else "-"
+
+    def _units(r):
+        return int(r["total_sold"]) if r is not None else "-"
+
+    def _rev(r):
+        return f"${float(r['total_revenue']):,.0f}" if r is not None else "-"
+
+    t1, t2, t3 = _row(top_sorted, 0), _row(top_sorted, 1), _row(top_sorted, 2)
+    slow_name = str(velocity_df.iloc[0]["product_name"]) if not velocity_df.empty else "-"
 
     rev = revenue_df.copy()
     rev["date"] = pd.to_datetime(rev["date"])
@@ -169,7 +183,7 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None,
     delta_pct = None
     if prev7 and prev7 > 0 and len(rev) >= 14:
         pct = round((last7 - prev7) / prev7 * 100)
-        if -100 <= pct <= 200:   # ignore absurd jumps from irregular uploads
+        if -100 <= pct <= 200:
             delta_pct = pct
 
     today = datetime.now()
@@ -180,9 +194,16 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None,
         "business_name": business_name,
         "week_range": f"{week_start:%b %d} - {today:%b %d, %Y}",
         "next_report": f"{next_report:%A, %b %d}",
-        "top_product_name": str(top_row["product_name"]) if top_row is not None else "-",
-        "top_product_units": int(top_row["total_sold"]) if top_row is not None else 0,
-        "top_product_revenue": f"${float(top_row['total_revenue']):,.0f}" if top_row is not None else "$0",
+        "top_product_name": _name(t1),
+        "top_product_units": _units(t1),
+        "top_product_revenue": _rev(t1),
+        "top2_name": _name(t2),
+        "top2_units": _units(t2),
+        "top2_revenue": _rev(t2),
+        "top3_name": _name(t3),
+        "top3_units": _units(t3),
+        "top3_revenue": _rev(t3),
+        "slow_product_name": slow_name,
         "week_revenue": f"${last7:,.0f}",
         "delta_pct": delta_pct,
         "headline": insights["headline"],
