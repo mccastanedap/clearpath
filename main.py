@@ -2,6 +2,9 @@ import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import unquote_plus
+import pandas as pd
+from src.email_sender import send_weekly_insights, send_csv_error
+from src.validate import validate_sales_df, CSVValidationError
 
 # --- Parche para multiprocessing en Lambda (no soporta SemLock) ---
 import multiprocessing.synchronize
@@ -100,10 +103,26 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None,
         file_key = latest_file['Key']
         print(f"Reading latest file: {file_key}")
 
-    raw_df = read_csv_from_s3(
-        bucket_name=S3_BUCKET_NAME,
-        file_key=file_key
-    )
+    # Read the uploaded file. If pandas can't parse it (empty, binary, wrong
+    # format), turn that into a friendly, client-facing error.
+    try:
+        raw_df = read_csv_from_s3(
+            bucket_name=S3_BUCKET_NAME,
+            file_key=file_key
+        )
+    except (pd.errors.EmptyDataError, pd.errors.ParserError, UnicodeDecodeError) as e:
+        raise CSVValidationError(
+            "We couldn't read this file. Please make sure it's a valid CSV "
+            "(exported from Excel or your point-of-sale system) and not an Excel, "
+            "PDF, or other format.",
+            detail=f"read_csv_from_s3 failed: {type(e).__name__}: {e}",
+        )
+
+    # Validate contents (columns, at least one usable row).
+    warning = validate_sales_df(raw_df)
+    if warning:
+        print(f"CSV warning: {warning}")
+
     clean_df = clean_sales_data(raw_df)
 
     # Step 2 - Load
@@ -208,6 +227,12 @@ def lambda_handler(event, context):
             "statusCode": 200,
             "body": "Pipeline completed successfully."
         }
+    except CSVValidationError as e:
+        # Invalid upload: tell the client what to fix and stop.
+        # Do NOT re-raise (retrying the same bad file won't help).
+        print(f"CSV rejected for {user_uid}: {e.detail or e.client_message}")
+        send_csv_error(profile["business_name"], profile["email"], e.client_message)
+        return {"statusCode": 422, "body": f"CSV rejected: {e.client_message}"}
     except Exception as e:
         print(f"Pipeline failed: {e}")
         raise
