@@ -1,5 +1,5 @@
 import subprocess
-import sys
+from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import unquote_plus
 import pandas as pd
@@ -149,23 +149,55 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None,
     revenue_df = daily_revenue(client_id=client_id)
     velocity_df = product_velocity(client_id=client_id)
 
-    # Step 4 - Insights
+    # Step 4 - Insights (now returns {"headline": ..., "steps": [...]})
     print("Generating insights...")
     insights = generate_insights(
         top_df, revenue_df, velocity_df,
         business_name, business_type
     )
 
-    sys.stdout.buffer.write(b"\n--- CLEARPATH INSIGHTS ---\n\n")
-    sys.stdout.buffer.write(insights.encode("utf-8", errors="replace"))
-    sys.stdout.buffer.write(b"\n")
-    sys.stdout.flush()
+    # Step 4.5 - Build the report the email needs, from data we already have
+    top_sorted = top_df.sort_values("total_sold", ascending=False)
+    top_row = top_sorted.iloc[0] if not top_sorted.empty else None
+
+    rev = revenue_df.copy()
+    rev["date"] = pd.to_datetime(rev["date"])
+    rev = rev.sort_values("date")
+    last7 = float(rev.tail(7)["total_revenue"].sum())
+    prev7 = float(rev.iloc[-14:-7]["total_revenue"].sum()) if len(rev) >= 14 else None
+
+    delta_pct = None
+    if prev7 and prev7 > 0 and len(rev) >= 14:
+        pct = round((last7 - prev7) / prev7 * 100)
+        if -100 <= pct <= 200:   # ignore absurd jumps from irregular uploads
+            delta_pct = pct
+
+    today = datetime.now()
+    week_start = today - timedelta(days=6)
+    next_report = today + timedelta(days=7)
+
+    report = {
+        "business_name": business_name,
+        "week_range": f"{week_start:%b %d} - {today:%b %d, %Y}",
+        "next_report": f"{next_report:%A, %b %d}",
+        "top_product_name": str(top_row["product_name"]) if top_row is not None else "-",
+        "top_product_units": int(top_row["total_sold"]) if top_row is not None else 0,
+        "top_product_revenue": f"${float(top_row['total_revenue']):,.0f}" if top_row is not None else "$0",
+        "week_revenue": f"${last7:,.0f}",
+        "delta_pct": delta_pct,
+        "headline": insights["headline"],
+        "steps": insights["steps"],
+    }
+
+    print("Insights:", insights["headline"])
+    for s in insights["steps"]:
+        print(f"  - {s['title']}: {s['description']}")
 
     # Step 5 - Email
     print("\nSending weekly insights email...")
-    send_weekly_insights(business_name, recipient_email, insights)
+    send_weekly_insights(recipient_email, report)
 
-    return insights
+    return report
 
 
 if __name__ == "__main__":

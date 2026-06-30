@@ -82,8 +82,7 @@ dbt is executed in-process through the `dbtRunner` API rather than the
 `python -m dbt.cli.main` CLI.
 
 - **`web/`** — Next.js 16 upload UI. The form posts to `web/app/api/upload/route.ts`, which streams the CSV to S3 using `@aws-sdk/client-s3`.
-- **`dags/clearpath_pipeline.py`** — Optional local Airflow DAG that orchestrates the same pipeline as `main.py`. Kept as an alternative scheduler for local development; the production path is the S3-triggered AWS Lambda function.
-- **`src/`** — shared Python pipeline modules used by both the DAG and `main.py`:
+- **`src/`** — shared Python pipeline modules used by `main.py`:
   - `config.py` — centralised env-var loading and validation
   - `aws.py` — reusable S3 client factory
   - `s3.py`, `clean.py`, `database.py`, `queries.py`, `insights.py`, `email_sender.py`
@@ -152,11 +151,6 @@ python main.py
 This reads the latest CSV from S3 for the configured client
 (set via `CLIENT_NAME` and `BUSINESS_TYPE` env vars), runs the full
 pipeline, and sends the insights email to `REPORT_RECIPIENT_EMAIL`.
-
-Optionally, the repo also includes a local Airflow setup under
-`airflow/` for development. Point `AIRFLOW_HOME` at that directory
-and start the scheduler/web server; the `clearpath_pipeline` DAG
-will appear in the UI. This is not required for normal use.
 
 ## Environment variables
 
