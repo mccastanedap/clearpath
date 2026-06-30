@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase-browser";
 
 type Status = "idle" | "uploading" | "success" | "error";
@@ -10,6 +10,7 @@ const LOGIN_URL = "https://clearpathdata.org/login";
 export default function UploadPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
 
@@ -96,12 +97,26 @@ export default function UploadPage() {
             <div>
               <label className="block text-sm font-medium text-neutral-700 mb-2">Sales CSV</label>
               <input
+                ref={fileInputRef}
                 type="file"
                 accept=".csv"
                 onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                 disabled={isUploading}
-                className="w-full text-sm text-neutral-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-[#112b50] file:text-white hover:file:bg-[#1a3a6b] transition disabled:opacity-60"
+                className="hidden"
               />
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="shrink-0 rounded-lg bg-[#112b50] py-2 px-4 text-sm font-medium text-white hover:bg-[#1a3a6b] transition disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Choose file
+                </button>
+                <span className="min-w-0 flex-1 truncate text-sm text-neutral-500">
+                  {file ? file.name : "No file selected"}
+                </span>
+              </div>
             </div>
 
             <button
