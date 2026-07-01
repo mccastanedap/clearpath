@@ -82,7 +82,7 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None,
 
     # Step 1 - Clean
     print("Cleaning data...")
-    raise RuntimeError("TEST ALERT - forcing a failure to verify the alert email")
+    
 
     if s3_key:
         # Multi-client flow: process exactly the file from the S3 event.
