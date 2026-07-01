@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import unquote_plus
 import pandas as pd
-from src.email_sender import send_weekly_insights, send_csv_error
+from src.email_sender import send_weekly_insights, send_csv_error, send_pipeline_alert
 from src.validate import validate_sales_df, CSVValidationError
 
 # --- Parche para multiprocessing en Lambda (no soporta SemLock) ---
@@ -290,4 +290,10 @@ def lambda_handler(event, context):
         return {"statusCode": 422, "body": f"CSV rejected: {e.client_message}"}
     except Exception as e:
         print(f"Pipeline failed: {e}")
+        # Alert the operator so they can fix this before the client notices.
+        # `profile`/`s3_key` may not exist yet if we failed early, so read them
+        # defensively; send_pipeline_alert never raises.
+        _profile = locals().get("profile")
+        _client_name = _profile["business_name"] if _profile else None
+        send_pipeline_alert(e, client_name=_client_name, s3_key=locals().get("s3_key"))
         raise

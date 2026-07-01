@@ -185,3 +185,52 @@ def send_csv_error(client_name: str, client_email: str, error_message: str) -> b
     except Exception as e:
         print(f"Failed to send CSV error email: {e}")
         return False
+
+
+ALERT_RECIPIENT_EMAIL = "contact@clearpathdata.org"
+
+
+def send_pipeline_alert(error, client_name=None, s3_key=None):
+    """
+    Email the operator when the pipeline fails with an unexpected error.
+    Includes client, file, error type/message, and full traceback so the
+    failure can be diagnosed. Never raises: if the alert can't be sent, it
+    just logs, so it never masks the original error.
+    """
+    import traceback
+
+    try:
+        if not RESEND_API_KEY or not FROM_EMAIL:
+            print("Pipeline alert skipped: missing RESEND_API_KEY or FROM_EMAIL.")
+            return
+
+        who = client_name or "unknown client"
+        where = s3_key or "unknown file"
+        err_type = type(error).__name__
+        err_msg = str(error)
+        tb = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+
+        subject = f"[Clearpath ALERT] Pipeline failed for {who}"
+        text_content = (
+            "The Clearpath pipeline failed while processing an upload.\n\n"
+            f"Client: {who}\n"
+            f"File: {where}\n"
+            f"Error type: {err_type}\n"
+            f"Error message: {err_msg}\n\n"
+            "Full traceback:\n"
+            f"{tb}\n"
+            "Check the CloudWatch logs for the function clearpath-pipeline for more detail."
+        )
+
+        resend.api_key = RESEND_API_KEY
+        resend.Emails.send({
+            "from": FROM_EMAIL,
+            "to": ALERT_RECIPIENT_EMAIL,
+            "subject": subject,
+            "text": text_content,
+            "reply_to": REPLY_TO_EMAIL,
+        })
+        print(f"Pipeline alert sent to {ALERT_RECIPIENT_EMAIL} for {who}.")
+    except Exception as alert_err:
+        # Never let the alert itself break anything.
+        print(f"Failed to send pipeline alert: {alert_err}")
