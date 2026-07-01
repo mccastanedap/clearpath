@@ -43,7 +43,7 @@ from src.config import (
     REPORT_RECIPIENT_EMAIL,
     S3_BUCKET_NAME,
 )
-from src.database import get_profile_by_user_id, load_to_database
+from src.database import get_profile_by_user_id, load_to_database, save_weekly_summary
 from src.email_sender import send_weekly_insights
 from src.insights import generate_insights
 from src.queries import daily_revenue, product_velocity, top_products
@@ -128,6 +128,11 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None,
     # Step 2 - Load
     print("Loading to database...")
     load_to_database(clean_df, table_name='sales', client_id=client_id)
+
+    # Step 2.6 - Save this week's summary to weekly_history (never deleted),
+    # so we can compute real week-over-week deltas later.
+    print("Saving weekly history...")
+    save_weekly_summary(clean_df, client_id)
 
     # Step 2.5 - Run dbt models so marts reflect this batch's data
     print("Running dbt models...")

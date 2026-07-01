@@ -116,3 +116,100 @@ def load_to_database(df, table_name, schema="clearpath", client_id=None):
         conn.close()
 
     print(f"Loaded {len(rows)} rows into {schema}.{table_name}")
+
+
+def compute_weekly_summary(df):
+    """
+    From a cleaned sales DataFrame (columns: date, product_name, category,
+    size, quantity, price), compute a one-week summary dict:
+    week_start, week_end (real date range in the file), total_revenue,
+    total_units, and the top product by units. Returns None if there are no
+    usable rows.
+    """
+    if df is None or df.empty:
+        return None
+
+    d = df.copy()
+    d["date"] = pd.to_datetime(d["date"], errors="coerce")
+    d["quantity"] = pd.to_numeric(d["quantity"], errors="coerce")
+    d["price"] = pd.to_numeric(d["price"], errors="coerce")
+    d = d.dropna(subset=["date", "quantity", "price"])
+    d = d[d["quantity"] > 0]
+    if d.empty:
+        return None
+
+    d["revenue"] = d["quantity"] * d["price"]
+    by_product = d.groupby("product_name").agg(
+        units=("quantity", "sum"),
+        revenue=("revenue", "sum"),
+    ).reset_index().sort_values("units", ascending=False)
+    top_row = by_product.iloc[0]
+
+    return {
+        "week_start": d["date"].min().date(),
+        "week_end": d["date"].max().date(),
+        "total_revenue": round(float(d["revenue"].sum()), 2),
+        "total_units": int(d["quantity"].sum()),
+        "top_product_name": str(top_row["product_name"]),
+        "top_product_units": int(top_row["units"]),
+        "top_product_revenue": round(float(top_row["revenue"]), 2),
+    }
+
+
+def save_weekly_summary(df, client_id, schema="clearpath"):
+    """
+    Compute this batch's weekly summary and upsert it into
+    {schema}.weekly_history, keyed by (client_id, week_start, week_end).
+    If a summary for the same client and date range already exists, it's
+    updated (so a client's re-upload of the same period is idempotent).
+    Does nothing if there are no usable rows or no client_id.
+    """
+    if client_id is None:
+        print("No client_id given; skipping weekly history.")
+        return
+
+    summary = compute_weekly_summary(df)
+    if summary is None:
+        print("No usable rows for weekly history; skipping.")
+        return
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    "INSERT INTO {tbl} "
+                    "(client_id, week_start, week_end, total_revenue, total_units, "
+                    "top_product_name, top_product_units, top_product_revenue) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s) "
+                    "ON CONFLICT (client_id, week_start, week_end) DO UPDATE SET "
+                    "total_revenue = EXCLUDED.total_revenue, "
+                    "total_units = EXCLUDED.total_units, "
+                    "top_product_name = EXCLUDED.top_product_name, "
+                    "top_product_units = EXCLUDED.top_product_units, "
+                    "top_product_revenue = EXCLUDED.top_product_revenue, "
+                    "created_at = now()"
+                ).format(tbl=sql.Identifier(schema, "weekly_history")),
+                (
+                    client_id,
+                    summary["week_start"],
+                    summary["week_end"],
+                    summary["total_revenue"],
+                    summary["total_units"],
+                    summary["top_product_name"],
+                    summary["top_product_units"],
+                    summary["top_product_revenue"],
+                ),
+            )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    print(
+        f"Saved weekly history for {client_id}: "
+        f"{summary['week_start']} to {summary['week_end']}, "
+        f"revenue {summary['total_revenue']}, units {summary['total_units']}."
+    )
