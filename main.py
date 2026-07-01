@@ -43,7 +43,7 @@ from src.config import (
     REPORT_RECIPIENT_EMAIL,
     S3_BUCKET_NAME,
 )
-from src.database import get_profile_by_user_id, load_to_database, save_weekly_summary
+from src.database import get_profile_by_user_id, load_to_database, save_weekly_summary, get_week_over_week
 from src.email_sender import send_weekly_insights
 from src.insights import generate_insights
 from src.queries import daily_revenue, product_velocity, top_products
@@ -179,17 +179,14 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None,
     t1, t2, t3 = _row(top_sorted, 0), _row(top_sorted, 1), _row(top_sorted, 2)
     slow_name = str(velocity_df.iloc[0]["product_name"]) if not velocity_df.empty else "-"
 
-    rev = revenue_df.copy()
-    rev["date"] = pd.to_datetime(rev["date"])
-    rev = rev.sort_values("date")
-    last7 = float(rev.tail(7)["total_revenue"].sum())
-    prev7 = float(rev.iloc[-14:-7]["total_revenue"].sum()) if len(rev) >= 14 else None
-
-    delta_pct = None
-    if prev7 and prev7 > 0 and len(rev) >= 14:
-        pct = round((last7 - prev7) / prev7 * 100)
-        if -100 <= pct <= 200:
-            delta_pct = pct
+    # Week revenue and week-over-week delta now come from weekly_history
+    # (persisted per week), so the delta compares this week vs the previous
+    # one even though the sales table only holds the latest upload.
+    week_rev_value, delta_pct = get_week_over_week(client_id)
+    if week_rev_value is None:
+        # Fallback: if history isn't available for some reason, use this
+        # batch's revenue from the daily figures so the email still has a total.
+        week_rev_value = float(revenue_df["total_revenue"].sum()) if not revenue_df.empty else 0.0
 
     today = datetime.now()
     week_start = today - timedelta(days=6)
@@ -209,7 +206,7 @@ def run_pipeline(business_name=None, business_type=None, recipient_email=None,
         "top3_units": _units(t3),
         "top3_revenue": _rev(t3),
         "slow_product_name": slow_name,
-        "week_revenue": f"${last7:,.0f}",
+        "week_revenue": f"${week_rev_value:,.0f}",
         "delta_pct": delta_pct,
         "headline": insights["headline"],
         "steps": insights["steps"],

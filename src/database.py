@@ -213,3 +213,48 @@ def save_weekly_summary(df, client_id, schema="clearpath"):
         f"{summary['week_start']} to {summary['week_end']}, "
         f"revenue {summary['total_revenue']}, units {summary['total_units']}."
     )
+
+
+def get_week_over_week(client_id, schema="clearpath"):
+    """
+    Read the two most recent weekly_history rows for client_id and return
+    (current_week_revenue, delta_pct):
+      - current_week_revenue: total_revenue of the most recent week (float),
+        or None if the client has no history yet.
+      - delta_pct: percent change vs the previous week (int), or None if
+        there's only one week, the previous revenue is zero, or the change
+        is outside a sane range (guard against absurd jumps).
+    """
+    if client_id is None:
+        return None, None
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                sql.SQL(
+                    "SELECT total_revenue FROM {tbl} "
+                    "WHERE client_id = %s "
+                    "ORDER BY week_start DESC LIMIT 2"
+                ).format(tbl=sql.Identifier(schema, "weekly_history")),
+                (client_id,),
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    if not rows:
+        return None, None
+
+    current_rev = float(rows[0][0])
+    if len(rows) < 2:
+        return current_rev, None
+
+    prev_rev = float(rows[1][0])
+    if prev_rev <= 0:
+        return current_rev, None
+
+    pct = round((current_rev - prev_rev) / prev_rev * 100)
+    if not (-100 <= pct <= 200):
+        return current_rev, None
+    return current_rev, pct
